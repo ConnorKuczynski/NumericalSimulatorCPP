@@ -1,4 +1,5 @@
 #include <iostream>
+#include <Eigen/Dense>
 
 const int DIM = 2; // simulator dimension
 const int X = 0; //enumerate accessing values from pos/vel/acc arrays 
@@ -185,4 +186,5 @@ public:
 
 int main() {
   std::cout << "Hello World!\n";
+  Eigen::MatrixXd m;
 }
