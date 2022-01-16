@@ -248,11 +248,11 @@ class Control {
     }
     double* updateThrust(Dynamics::State* s, Rocket* r, float fuelMass, double dt);
     double* getThrust();
-    int* initProfile();
+    double** initProfile();
     void updateProfile(double dt);
     private:
       double* thrust;
-      int* flight_profile;
+      double** flight_profile;
       int time_itr = 0; //increments based on if enough time elapsed to go to next step
       double secs = 0; //time elapsed, resets after each iteration of time_itr
 };

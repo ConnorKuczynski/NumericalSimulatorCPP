@@ -36,8 +36,11 @@ public:
     return GM/pow((R + h),2);
   }
   /*
-   * density (kg/m) of atmosphere as a function of height (meters)
+   * density (kg/m) of atmosphere as a function of height (meters) above sea level
    * https://www.grc.nasa.gov/www/k-12/rocket/atmosmet.html
+   * WARNING, this pressure does not scale for h < 0, obviously because that means it crashed into the ocean
+   * this leads to the rocket not reaching terminal velocity due to the factors of gravity increasing and pressure increasing
+   * when h < 0
    */
   double getP(int h)
   {
@@ -299,7 +302,13 @@ double* Control::updateThrust(Dynamics::State* s, Rocket* r, float fuelMass, dou
     }
     return thrust;
   }
+  else {
+    for (int i = 0; i < DIM; i++) {
+      thrust[i] = flight_profile[time_itr][i];
+    }
+  }
   //cout << time_itr << "/" << (int)(TIME_FINAL/SECS_PER_ITR) << endl;
+  /*
   if (flight_profile[time_itr] == HOVER)
   {
     thrust[Z] += -s->acc[Z]*s->mass;
@@ -311,21 +320,30 @@ double* Control::updateThrust(Dynamics::State* s, Rocket* r, float fuelMass, dou
     thrust[Z] = 0;
     cout << "BAD NEWS";
   }
+  */
   return thrust;
 }
-int* Control::initProfile() {
+double** Control::initProfile() {
 
-  flight_profile = new int[(int)(TIME_FINAL/SECS_PER_ITR)];
-  for (int i = 0; i < TIME_FINAL/SECS_PER_ITR; i++) {
-    flight_profile[i] = MAX_THRUST;
-    /*
-    if (i < (TIME_FINAL/SECS_PER_ITR) / 2) {
-      flight_profile[i] = MAX_THRUST;
-    }
-    else {
-      flight_profile[i] = HOVER;
-    }
-    */
+  flight_profile = new double*[(int)(TIME_FINAL/SECS_PER_ITR)];
+  for (int i = 0; i < (int)(TIME_FINAL/SECS_PER_ITR); i++) {
+    flight_profile[i] = new double[DIM];
+  }
+  float x_ang = (PI/180)*85; //radians
+  float y_ang = (PI/180)*85; 
+  float x = cos(x_ang); 
+  float y = cos(y_ang); 
+  float z = sqrt(1 - pow(x,2) - pow(y,2)); //x^2 + y^2 + z^2 = 1
+  for (int i = 0; i < 100; i++) {
+    flight_profile[i][X] = MAX_THRUST*x;
+    flight_profile[i][Y] = MAX_THRUST*y;
+    flight_profile[i][Z] = MAX_THRUST*z;
+  }
+  
+  for (int i = 100; i < TIME_FINAL/SECS_PER_ITR; i++) {
+      flight_profile[i][X] = 0;
+      flight_profile[i][Y] = 0;
+      flight_profile[i][Z] = MAX_THRUST;
   }
   return flight_profile;
 }
@@ -533,17 +551,17 @@ string Dynamics::State::to_string()
       posStr += (std::to_string(pos[i]) + ","); 
       velStr += (std::to_string(vel[i]) + ","); 
       accStr += (std::to_string(acc[i]) + ","); 
-      angStr += (std::to_string(ang[i]) + ","); 
-      ang_velStr += (std::to_string(ang_vel[i]) + ","); 
-      ang_accStr += (std::to_string(ang_acc[i]) + ","); 
+      angStr += (std::to_string((int)(ang[i]*(180/PI)) % 360) + ","); 
+      ang_velStr += (std::to_string((int)(ang_vel[i]*(180/PI)) % 360) + ","); 
+      ang_accStr += (std::to_string((int)(ang_acc[i]*(180/PI)) % 360) + ","); 
     }
     else { 
       posStr += (std::to_string(pos[i]) + ")\n"); 
       velStr += (std::to_string(vel[i]) + ")\n"); 
       accStr += (std::to_string(acc[i]) + ")\n"); 
-      angStr += (std::to_string(ang[i]) + ")\n"); 
-      ang_velStr += (std::to_string(ang_vel[i]) + ")\n"); 
-      ang_accStr += (std::to_string(ang_acc[i]) + ")\n"); 
+      angStr += (std::to_string((int)(ang[i]*(180/PI)) % 360) + ")\n"); 
+      ang_velStr += (std::to_string((int)(ang_vel[i]*(180/PI)) % 360) + ")\n"); 
+      ang_accStr += (std::to_string((int)(ang_acc[i]*(180/PI)) % 360) + ")\n"); 
     }
   } 
   output = posStr + velStr + accStr + angStr + ang_velStr + ang_accStr;
@@ -692,12 +710,12 @@ string Dynamics::State::to_string()
     this->updateNetF(forces);
     this->updateAcc();
 
-    //this->updateMdrag();
-    //this->updateMg();
-    //this->updateMThrust();
-    //this->updateInerMom();
-    //this->updateNetM(moments);
-    //this->updateAngAcc();
+    this->updateMdrag();
+    this->updateMg();
+    this->updateMThrust();
+    this->updateInerMom();
+    this->updateNetM(moments);
+    this->updateAngAcc();
     s->timeElapsed += dt;
   }
   void Dynamics::euler(double dt) {
@@ -742,7 +760,8 @@ string Dynamics::State::to_string()
    */
   void Dynamics::updateFdrag()
   {
-    double P = e->getP(s->pos[Z]); 
+    double altitude = s->pos[Z];
+    double P = e->getP(altitude); 
     for (int i = 0; i < DIM; i++)
     {
       if (-s->vel[i] + e->air[i] > 0) {
@@ -767,10 +786,11 @@ string Dynamics::State::to_string()
   }
 
 
-
+//set getG parameters to 0 for constant fG
   void Dynamics::updateFg()
   {
-    fG[Z] = -e->getG(s->pos[Z])*r->getMass(); 
+    double altitude = s->pos[Z];
+    fG[Z] = -e->getG(altitude)*r->getMass(); 
   }
   void Dynamics::updateMg()
   {
@@ -958,7 +978,7 @@ Rocket* initRocket()
   float m_vel_out = .1; //m/s set as a parameters before, not actually used for anything currently, mass changes are handled in the tanks
   int numTanks = 1;
   int numShape = 1;
-  float max_t = 50000; //N
+  float max_t = MAX_THRUST; //N
   Tank** t = initTanks();
 
   Rocket* r = new Rocket(shapes, cov, coeffDrag, d_m, surfaceArea, m_vel_out, t, numTanks, numShape, massParts, max_t); 
@@ -976,10 +996,12 @@ Control* initControl()
 }
 void sampleData(Dynamics* sys, double timeElapsed)
 {
-  cout << sys->to_string() << endl;
+  if (timeElapsed > 60*80) {
+    cout << "CHECK VALUES" << "\n";
+  }
+  cout << sys->to_string() << "\n";
 }
 int main() {
-  double dt = .0001; //.0001 seconds per physics tick
   double timeElapsed = 0;
   
   double secsPerSample = dt*loopPerSample;
