@@ -686,11 +686,10 @@ string Dynamics::State::to_string()
     double* moments[3] = {mDrag,mThrust,mG};
     
 
-    //this->updateFdrag();
+    this->updateFdrag();
     this->updateFg();
     this->updateFThrust(s->prev, dt);
     this->updateNetF(forces);
-    cout << "NetF  " << netF[Z]/r->getMass() << endl;
     this->updateAcc();
 
     //this->updateMdrag();
@@ -983,7 +982,6 @@ int main() {
   double dt = .0001; //.0001 seconds per physics tick
   double timeElapsed = 0;
   
-  int loopPerSample = 100;
   double secsPerSample = dt*loopPerSample;
   double secs = secsPerSample;
   Rocket* r = initRocket();
