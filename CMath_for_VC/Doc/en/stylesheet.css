@@ -1,0 +1,13 @@
+Body {
+   max-width : 1000px;
+   margin-left : auto;
+   margin-right : auto;
+   font-family : Times New Roman;
+   background-color :#ffffff;
+   color : #000000;
+   padding-left : 10px;
+   padding-right : 10px;
+ }
+a:link    {color: #0000ff}
+a:visited {color: #0000ff}
+a:active  {color: #ff0000}
