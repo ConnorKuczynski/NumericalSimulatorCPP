@@ -158,7 +158,7 @@ float Sphere::getVolume() {
   return (4/3.)*PI*pow(radius,3);
 }
 double* Sphere::updateIFuel(Tank* t) {
-  return t->updateIFuel(this);
+  return t->updateIFuelHelper(this);
 }
 //hollow sphere
 double* Sphere::updateI(float mass) {
@@ -232,7 +232,7 @@ int Tank::updateMass(double dt)
   double dltaM = this->mass_vel_out*dt;
   updateFilledVolume(s, dltaM);
   s->updateCOM(com, fuelH, fuelM, dry_mass);
-  s->updateI(dry_mass);
+  updateIFuel(s);
   fuelM -= dltaM;
 
   return (dry_mass+fuelM);
@@ -266,6 +266,9 @@ void Tank::updateFilledVolumeHelper(RectagularPrism* s, double dltaM) {
   volumeFilled -= dltaV;
   fuelH -= dltaH;
 }
+double* Tank::getIFuel() {
+  return fuelI;
+}
 float Tank::getFuelHeight(){
   return fuelH;
 }
@@ -285,10 +288,17 @@ void Tank::updateFilledVolumeHelper(Sphere* s, double dltaM) {
 
 
 
-double* Control::updateThrust(Dynamics::State* s, Rocket* r, double dt) {
+double* Control::updateThrust(Dynamics::State* s, Rocket* r, float fuelMass, double dt) {
   //cout << "TIME ELAPSED: " << s->timeElapsed << " " << time_itr << endl;
+  
   updateProfile(dt); 
   
+  if (fuelMass < 0) {
+    for (int i = 0; i < DIM; i++) {
+      thrust[i] = 0;
+    }
+    return thrust;
+  }
   //cout << time_itr << "/" << (int)(TIME_FINAL/SECS_PER_ITR) << endl;
   if (flight_profile[time_itr] == HOVER)
   {
@@ -371,8 +381,7 @@ double* Rocket::updateI() {
   for (int j = 0; j < numTanks; j++)
   {
     
-    Shape* fuelContainer = tanks[j]->getShape();
-    double* ITanks = tanks[j]->updateIFuel(fuelContainer);
+    double* ITanks = tanks[j]->getIFuel();
     for (int i = 0; i < DIM; i++)
     {
       I[i] = IDry[i];
@@ -418,6 +427,7 @@ int Rocket::updateMass(double dt)
     Tank* tank = tanks[i];
     tot_mass += tank->updateMass(dt);
   }
+  updateI();
   return tot_mass;
 }
 /*
@@ -676,10 +686,11 @@ string Dynamics::State::to_string()
     double* moments[3] = {mDrag,mThrust,mG};
     
 
-    this->updateFdrag();
+    //this->updateFdrag();
     this->updateFg();
     this->updateFThrust(s->prev, dt);
     this->updateNetF(forces);
+    cout << "NetF  " << netF[Z]/r->getMass() << endl;
     this->updateAcc();
 
     //this->updateMdrag();
@@ -778,16 +789,10 @@ string Dynamics::State::to_string()
       fuelMass += r->getTanks()[i]->getFuelMass();
     }
     double* newThrust = 0;
-    cout << fuelMass << endl;
-    if (fuelMass > 0)
-    {
-      newThrust = c->updateThrust(s, r, dt);
-    }
-    else {
-      for (int i = 0; i < DIM; i++) {
-        newThrust[i] = 0;
-      }
-    }
+
+    newThrust = c->updateThrust(s, r, fuelMass, dt);
+
+    
     for (int i = 0; i < DIM; i++)
     {
         fThrust[i] = newThrust[i];

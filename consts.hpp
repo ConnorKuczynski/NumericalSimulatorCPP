@@ -16,4 +16,4 @@ const int MAX_THRUST = 1; //maintain a constant maximium thrust in positive Z di
 //SIMULATION PARAMETERS
 
 const double SECS_PER_ITR = .001; //1 ms for each iteration in flight profile
-const double TIME_FINAL = 60*30; //(s) 1 minute
+const double TIME_FINAL = 60*30; //(s) 30 minute

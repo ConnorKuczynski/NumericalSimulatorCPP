@@ -73,7 +73,7 @@ class Tank {
     Tank(Shape* s, float dry_mass, float massF, double mass_vel_out, double fuelD, float volFill, float fuelHeight) 
     : s(s), dry_mass(dry_mass), fuelM(massF), mass_vel_out(mass_vel_out), volumeFilled(volFill), densityFuel(fuelD), fuelH(fuelHeight) 
     {
-      
+      s->updateI(dry_mass);
       s->updateCOM(com, fuelH, fuelM, dry_mass);
     }
     //calculate momentum of inertia caused by fuel, calculate base on container of fuel
@@ -87,6 +87,7 @@ class Tank {
     float getFuelMass();
     float getFuelHeight();
     float getMass();
+    double* getIFuel();
     float* getCOM();
     Shape* getShape();
     void updateFilledVolume(Shape* s, double dltaM);
@@ -245,7 +246,7 @@ class Control {
       thrust = t;
       initProfile();
     }
-    double* updateThrust(Dynamics::State* s, Rocket* r, double dt);
+    double* updateThrust(Dynamics::State* s, Rocket* r, float fuelMass, double dt);
     double* getThrust();
     int* initProfile();
     void updateProfile(double dt);
