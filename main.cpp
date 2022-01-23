@@ -2,7 +2,8 @@
 #include <iostream>
 #include <cmath>
 #include "main.hpp"
-#include "raylib.h"
+
+//#include "raylib.h"
 using namespace std;
 
 
@@ -1080,7 +1081,7 @@ int main() {
   cout << "DONE";
 
   //RENDERING POSITIONAL DATA
-
+/*
 // Initialization
     //--------------------------------------------------------------------------------------
     const int screenWidth = 800;
@@ -1148,5 +1149,5 @@ int main() {
     //--------------------------------------------------------------------------------------
 
     return 0;
-
+*/
 }
