@@ -329,6 +329,7 @@ double** Control::initProfile() {
   for (int i = 0; i < (int)(TIME_FINAL/SECS_PER_ITR); i++) {
     flight_profile[i] = new double[DIM];
   }
+  /* 
   float x_ang = (PI/180)*85; //radians
   float y_ang = (PI/180)*85; 
   float x = cos(x_ang); 
@@ -339,8 +340,8 @@ double** Control::initProfile() {
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
   }
-  
-  for (int i = 100; i < TIME_FINAL/SECS_PER_ITR; i++) {
+  */
+  for (int i = 0; i < TIME_FINAL/SECS_PER_ITR; i++) {
       flight_profile[i][X] = 0;
       flight_profile[i][Y] = 0;
       flight_profile[i][Z] = MAX_THRUST;
@@ -761,17 +762,25 @@ string Dynamics::State::to_string()
   void Dynamics::updateFdrag()
   {
     double altitude = s->pos[Z];
-    double P = e->getP(altitude); 
+    double P = e->getP(altitude);
+    double vel_relativeTo_Air_Glo[DIM];
+    double vel_relativeTo_Air_Roc[DIM];
+    double fDrag_Roc[DIM];
+    for (int i = 0; i < DIM; i++) {
+      vel_relativeTo_Air_Glo[i] = (-s->vel[i] + e->air[i]); 
+    } 
+    globalToRocketFrame(vel_relativeTo_Air_Roc, vel_relativeTo_Air_Glo);
     for (int i = 0; i < DIM; i++)
     {
       if (-s->vel[i] + e->air[i] > 0) {
-        fDrag[i] = .5*pow((-s->vel[i] + e->air[i]),2)*P*r->getCD()[i]*r->getSA()[i];
+        fDrag_Roc[i] = .5*pow(vel_relativeTo_Air_Roc[i],2)*P*r->getCD()[i]*r->getSA()[i];
       }
       else {
-        fDrag[i] = -.5*pow((-s->vel[i] + e->air[i]),2)*P*r->getCD()[i]*r->getSA()[i];
+        fDrag_Roc[i] = -.5*pow(vel_relativeTo_Air_Roc[i],2)*P*r->getCD()[i]*r->getSA()[i];
       }
       //cout << "Environment air DIM: " << i << " " << fDrag[i] << endl;
     } 
+    rocketToGlobalFrame(fDrag_Roc, fDrag);
   }
   /*
    * the moment created from the force of drag
@@ -782,7 +791,9 @@ string Dynamics::State::to_string()
     for (int i = 0; i < DIM; i++) {
       dist[i] = r->getCOP()[i];
     }
-    crossProduct(dist, fDrag, mDrag);
+    double fDrag_Roc[DIM];
+    globalToRocketFrame(fDrag_Roc, fDrag);
+    crossProduct(dist, fDrag_Roc, mDrag);
   }
 
 
@@ -808,6 +819,9 @@ string Dynamics::State::to_string()
 
     double fG_roc[DIM];
 
+    //IMPORTANT: if we do decide to change transformation matrix remember to change this one
+    //also because this assumes fG[X] and fG[Y] are 0 to simpify calculations compared to globalToRocFrame function
+
     fG_roc[X] = (cos(a)*sin(b)*cos(y)+sin(a)*sin(y))*fG[Z];
     fG_roc[Y] = (sin(a)*sin(b)*cos(y)-cos(a)*sin(y))*fG[Z];
     fG_roc[Z] = cos(b)*cos(y)*fG[Z]; 
@@ -825,27 +839,48 @@ string Dynamics::State::to_string()
     {
       fuelMass += r->getTanks()[i]->getFuelMass();
     }
-    double* newThrust = 0;
-
-    newThrust = c->updateThrust(s, r, fuelMass, dt);
-
     
-    for (int i = 0; i < DIM; i++)
-    {
-        fThrust[i] = newThrust[i];
-    }
+    double* thrust_roc = c->updateThrust(s, r, fuelMass, dt);
+
+    rocketToGlobalFrame(thrust_roc, fThrust);
+
   }
+  
   void Dynamics::updateMThrust()
   {
-    crossProduct(r->getCOM(), fThrust, mThrust);
+    //c->getThrust() is thrust from rocket plane
+    crossProduct(r->getCOM(), c->getThrust(), mThrust);
   }
 
   //moment caused by movement
   void Dynamics::updateInerMom()
   {
-    crossProduct(r->getCOM(), netF, inerM);
-  }
+    double netF_roc[DIM];
 
+    globalToRocketFrame(netF_roc, netF);
+
+    crossProduct(r->getCOM(), netF_roc, inerM);
+  }
+  void Dynamics::rocketToGlobalFrame(double* roc, double* glo) {
+    double a = s->ang[X];
+    double b = s->ang[Y];
+    double y = s->ang[Z];
+
+    //use transpose matrix to go from rocket to global plane
+
+    glo[X] = (cos(a)*sin(b)*roc[X]) + (sin(a)*cos(b))*roc[Y] + (-sin(b))*roc[Z];
+    glo[Y] = (cos(a)*sin(b)*sin(y)-sin(a)*cos(y))*roc[X] + (sin(a)*sin(b)*sin(y)+cos(a)*cos(y))*roc[Y] + (cos(b)*sin(y))*roc[Z];
+    glo[Z] = (cos(a)*sin(b)*cos(y)+sin(a)*sin(y))*roc[X] + (sin(a)*sin(b)*cos(y)-cos(a)*sin(y))*roc[Y] + (cos(b)*cos(y))*roc[Z];
+  }
+  void Dynamics::globalToRocketFrame(double* roc, double* glo) {
+    double a = s->ang[X];
+    double b = s->ang[Y];
+    double y = s->ang[Z];
+
+    roc[X] = cos(a)*cos(b)*glo[X] + (cos(a)*sin(b)*sin(y) - sin(a)*cos(y))*glo[Y] + (cos(a)*sin(b)*cos(y) + sin(a)*sin(y))*glo[Z];
+    roc[Y] = sin(a)*cos(b)*glo[X] + (sin(a)*sin(b)*sin(y) + cos(a)*cos(y))*glo[Y] + (sin(a)*sin(b)*cos(y) - cos(a)*sin(y))*glo[Z];
+    roc[Z] = -sin(b)*glo[X] + cos(b)*sin(y)*glo[Y] + cos(b)*cos(y)*glo[Z]; 
+  }
   void Dynamics::updateNetF(double** forces)
   {
     for (int i = 0; i < NUM_FORCES; i++) {
@@ -917,8 +952,10 @@ string Dynamics::State::to_string()
 
   void Dynamics::updateAngAcc()
   {
+    double I_Glo[DIM];
+    rocketToGlobalFrame(r->getI(), I_Glo);
     for (int i = 0; i < DIM; i++){
-      s->ang_acc[i] = (netM[i]- inerM[i])/(r->getI()[i]);
+      s->ang_acc[i] = (netM[i]- inerM[i])/(I_Glo[i]);
     }
   }
   void Dynamics::updateAngVel(double dt) {

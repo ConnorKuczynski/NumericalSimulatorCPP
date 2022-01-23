@@ -200,6 +200,9 @@ public:
   void updateNetF(double** forces);
   void updateNetM(double** moments);
 
+  void globalToRocketFrame(double* loc, double* glo);
+  void rocketToGlobalFrame(double* loc, double* glo);
+  
   void clearNet();
   void updateAcc();
   void updateVel(double dt);

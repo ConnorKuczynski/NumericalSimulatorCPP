@@ -34,11 +34,13 @@ const double TIME_FINAL = 60*100; //(s) 30 minute
  * https://math.stackexchange.com/questions/2895880/inversion-of-rotation-matrix Use for inverse rotation matrix
  * 
  * TODO (1) Transform Fg to rocket frame to solve for the moment created by Fg, use global Fg to solve for global acc
- * // did it need to verify it works
+ * // did it need to verify it works, it appears to work for timeElasped = 0
+ * 
  * (2) Transform Fdrag to rocket axis: do this by transforming global velocity of air and rocket to rocket frame (need to align with surface area to solve)
  * next transform Fdrag back to global axis by using the transpose of the transformation matrix to solve for global acc.
  * Use rocket frame Fdrag to solve for moment created by Fdrag
  * 
  * (3) Use transposed transformation matrix on thrust to go from rocket frame to global frame, use this to calculate global acc. Use rocket frame thrust to calculate
  * moment created by thrust.
+ * // did it need to verify it works
  */
