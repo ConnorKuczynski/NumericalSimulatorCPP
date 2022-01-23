@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include "main.hpp"
-#include "PolyCode"
+
 using namespace std;
 
 
@@ -1081,7 +1081,7 @@ int main() {
 
   //RENDERING POSITIONAL DATA
 
-  Core* core = new POLYCODE_CORE(view, 1280,720,true,0,0,90,0,true);
+  //Core* core = new POLYCODE_CORE(view, 1280,720,true,0,0,90,0,true);
 
 
 
