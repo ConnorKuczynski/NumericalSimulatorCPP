@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include "main.hpp"
+#include "PolyCode"
 using namespace std;
 
 
@@ -329,19 +330,19 @@ double** Control::initProfile() {
   for (int i = 0; i < (int)(TIME_FINAL/SECS_PER_ITR); i++) {
     flight_profile[i] = new double[DIM];
   }
-  /* 
-  float x_ang = (PI/180)*85; //radians
-  float y_ang = (PI/180)*85; 
-  float x = cos(x_ang); 
-  float y = cos(y_ang); 
+  
+  float x_ang = (PI/180)*5; //radians
+  float y_ang = (PI/180)*5; 
+  float x = sin(x_ang); 
+  float y = sin(y_ang); 
   float z = sqrt(1 - pow(x,2) - pow(y,2)); //x^2 + y^2 + z^2 = 1
   for (int i = 0; i < 100; i++) {
     flight_profile[i][X] = MAX_THRUST*x;
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
   }
-  */
-  for (int i = 0; i < TIME_FINAL/SECS_PER_ITR; i++) {
+  
+  for (int i = 100; i < TIME_FINAL/SECS_PER_ITR; i++) {
       flight_profile[i][X] = 0;
       flight_profile[i][Y] = 0;
       flight_profile[i][Z] = MAX_THRUST;
@@ -526,7 +527,7 @@ void RK4(double[] initialVec, double[] vec, double (*diffEq)(float, double, doub
  */
 
 
-
+//TODO updatePrev copies current state pointer to prev state which is just the same memory so need to fix that eventually
 void Dynamics::State::updatePrev(State* curr)
 {
   ang = curr->ang; //global frame variables 
@@ -868,7 +869,7 @@ string Dynamics::State::to_string()
 
     //use transpose matrix to go from rocket to global plane
 
-    glo[X] = (cos(a)*sin(b)*roc[X]) + (sin(a)*cos(b))*roc[Y] + (-sin(b))*roc[Z];
+    glo[X] = (cos(a)*cos(b)*roc[X]) + (sin(a)*cos(b))*roc[Y] + (-sin(b))*roc[Z];
     glo[Y] = (cos(a)*sin(b)*sin(y)-sin(a)*cos(y))*roc[X] + (sin(a)*sin(b)*sin(y)+cos(a)*cos(y))*roc[Y] + (cos(b)*sin(y))*roc[Z];
     glo[Z] = (cos(a)*sin(b)*cos(y)+sin(a)*sin(y))*roc[X] + (sin(a)*sin(b)*cos(y)-cos(a)*sin(y))*roc[Y] + (cos(b)*cos(y))*roc[Z];
   }
@@ -1077,4 +1078,11 @@ int main() {
     else { secs += dt; }
   }
   cout << "DONE";
+
+  //RENDERING POSITIONAL DATA
+
+  Core* core = new POLYCODE_CORE(view, 1280,720,true,0,0,90,0,true);
+
+
+
 }
