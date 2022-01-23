@@ -789,12 +789,30 @@ string Dynamics::State::to_string()
 //set getG parameters to 0 for constant fG
   void Dynamics::updateFg()
   {
+    //global plane angles and forces
     double altitude = s->pos[Z];
-    fG[Z] = -e->getG(altitude)*r->getMass(); 
+
+    double fG_Z = -e->getG(altitude)*r->getMass();
+
+    fG[X] = 0;
+    fG[Y] = 0;
+    fG[Z] = fG_Z; 
+
   }
   void Dynamics::updateMg()
   {
-    crossProduct(r->getCOM(), fG, mG);
+    //convert from global to rocket frame
+    double a = s->ang[X];
+    double b = s->ang[Y];
+    double y = s->ang[Z];
+
+    double fG_roc[DIM];
+
+    fG_roc[X] = (cos(a)*sin(b)*cos(y)+sin(a)*sin(y))*fG[Z];
+    fG_roc[Y] = (sin(a)*sin(b)*cos(y)-cos(a)*sin(y))*fG[Z];
+    fG_roc[Z] = cos(b)*cos(y)*fG[Z]; 
+
+    crossProduct(r->getCOM(), fG_roc, mG);
   }
 
    /*
