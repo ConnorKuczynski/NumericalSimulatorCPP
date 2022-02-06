@@ -555,16 +555,16 @@ string Dynamics::State::to_string()
       velStr += (std::to_string(vel[i]) + ","); 
       accStr += (std::to_string(acc[i]) + ","); 
       angStr += (std::to_string((int)(ang[i]*(180/PI)) % 360) + ","); 
-      ang_velStr += (std::to_string((int)(ang_vel[i]*(180/PI)) % 360) + ","); 
-      ang_accStr += (std::to_string((int)(ang_acc[i]*(180/PI)) % 360) + ","); 
+      ang_velStr += (std::to_string((int)(ang_vel[i]*(180/PI))) + ","); 
+      ang_accStr += (std::to_string((int)(ang_acc[i]*(180/PI))) + ","); 
     }
     else { 
       posStr += (std::to_string(pos[i]) + ")\n"); 
       velStr += (std::to_string(vel[i]) + ")\n"); 
       accStr += (std::to_string(acc[i]) + ")\n"); 
       angStr += (std::to_string((int)(ang[i]*(180/PI)) % 360) + ")\n"); 
-      ang_velStr += (std::to_string((int)(ang_vel[i]*(180/PI)) % 360) + ")\n"); 
-      ang_accStr += (std::to_string((int)(ang_acc[i]*(180/PI)) % 360) + ")\n"); 
+      ang_velStr += (std::to_string((int)(ang_vel[i]*(180/PI))) + ")\n"); 
+      ang_accStr += (std::to_string((int)(ang_acc[i]*(180/PI))) + ")\n"); 
     }
   } 
   output = posStr + velStr + accStr + angStr + ang_velStr + ang_accStr;
@@ -708,8 +708,17 @@ string Dynamics::State::to_string()
     
 
     this->updateFdrag();
+    if (abs(fDrag[X]) > 1000000) {
+      cout << "STOP" << endl;
+    } 
     this->updateFg();
+    if (abs(fG[X]) > 100000) {
+      cout << "STOP" << endl;
+    } 
     this->updateFThrust(s->prev, dt);
+    if (abs(fThrust[X]) > 100000) {
+      cout << "STOP" << endl;
+    } 
     this->updateNetF(forces);
     this->updateAcc();
 
@@ -768,21 +777,45 @@ string Dynamics::State::to_string()
     double vel_relativeTo_Air_Glo[DIM];
     double vel_relativeTo_Air_Roc[DIM];
     double fDrag_Roc[DIM];
+    //double fDrag_Ang_Roc[DIM];
     for (int i = 0; i < DIM; i++) {
       vel_relativeTo_Air_Glo[i] = (-s->vel[i] + e->air[i]); 
     } 
+
     globalToRocketFrame(vel_relativeTo_Air_Roc, vel_relativeTo_Air_Glo);
+  
     for (int i = 0; i < DIM; i++)
     {
-      if (-s->vel[i] + e->air[i] > 0) {
+      if (vel_relativeTo_Air_Roc[i] > 0) {
         fDrag_Roc[i] = .5*pow(vel_relativeTo_Air_Roc[i],2)*P*r->getCD()[i]*r->getSA()[i];
       }
       else {
         fDrag_Roc[i] = -.5*pow(vel_relativeTo_Air_Roc[i],2)*P*r->getCD()[i]*r->getSA()[i];
       }
-      //cout << "Environment air DIM: " << i << " " << fDrag[i] << endl;
+      //angular drag
     } 
+    /*
+    if (s->ang_vel[X] > 0) {
+        fDrag_Ang_Roc[X] = .5*pow(s->ang_vel[X],2)*P*((r->getCD()[Y]*r->getSA()[Y])+(r->getCD()[Z]*r->getSA()[Z]));
+    }
+    else {
+        fDrag_Ang_Roc[X] = -.5*pow(s->ang_vel[X],2)*P*((r->getCD()[Y]*r->getSA()[Y])+(r->getCD()[Z]*r->getSA()[Z]));
+    }
+    if (s->ang_vel[Y] > 0) {
+        fDrag_Ang_Roc[Y] = .5*pow(s->ang_vel[Y],2)*P*((r->getCD()[X]*r->getSA()[X])+(r->getCD()[Z]*r->getSA()[Z]));
+    }
+    else {
+        fDrag_Ang_Roc[Y] = -.5*pow(s->ang_vel[Y],2)*P*((r->getCD()[X]*r->getSA()[X])+(r->getCD()[Z]*r->getSA()[Z]));
+    }
+    if (s->ang_vel[Z] > 0) {
+        fDrag_Ang_Roc[Z] = .5*pow(s->ang_vel[Z],2)*P*((r->getCD()[X]*r->getSA()[X])+(r->getCD()[Y]*r->getSA()[Y]));
+    }
+    else {
+        fDrag_Ang_Roc[Z] = -.5*pow(s->ang_vel[Z],2)*P*((r->getCD()[X]*r->getSA()[X])+(r->getCD()[Y]*r->getSA()[Y]));
+    }
+    */
     rocketToGlobalFrame(fDrag_Roc, fDrag);
+    //rocketToGlobalFrame(fDrag_Ang_Roc, fDrag_Ang);
   }
   /*
    * the moment created from the force of drag
@@ -793,6 +826,12 @@ string Dynamics::State::to_string()
     for (int i = 0; i < DIM; i++) {
       dist[i] = r->getCOP()[i];
     }
+    /*
+    double fDrag_Tot[DIM];
+    for (int i = 0; i < DIM; i++) {
+      fDrag_Tot[i] = fDrag[i]; //+ fDrag_Ang[i];
+    }
+    */
     double fDrag_Roc[DIM];
     globalToRocketFrame(fDrag_Roc, fDrag);
     crossProduct(dist, fDrag_Roc, mDrag);
@@ -878,7 +917,7 @@ string Dynamics::State::to_string()
     double a = s->ang[X];
     double b = s->ang[Y];
     double y = s->ang[Z];
-
+    
     roc[X] = cos(a)*cos(b)*glo[X] + (cos(a)*sin(b)*sin(y) - sin(a)*cos(y))*glo[Y] + (cos(a)*sin(b)*cos(y) + sin(a)*sin(y))*glo[Z];
     roc[Y] = sin(a)*cos(b)*glo[X] + (sin(a)*sin(b)*sin(y) + cos(a)*cos(y))*glo[Y] + (sin(a)*sin(b)*cos(y) - cos(a)*sin(y))*glo[Z];
     roc[Z] = -sin(b)*glo[X] + cos(b)*sin(y)*glo[Y] + cos(b)*cos(y)*glo[Z]; 

@@ -18,10 +18,10 @@ const float MAX_THRUST = 50000; //maintain a constant maximium thrust in positiv
 
 //SIMULATION PARAMETERS
 
-double dt = .00001; //.00001 seconds per physics tick, may be changed to a variable time step if needed
+double dt = .000001; // seconds per physics tick, may be changed to a variable time step if needed
 const int loopPerSample = 10000; //sample rate for simulation 
 const double SECS_PER_ITR = .001; //1 ms for each iteration in flight profile
-const double TIME_FINAL = 60*100; //(s) 30 minute
+const double TIME_FINAL = 60; //(s) 30 minute
 
 
 
@@ -43,4 +43,14 @@ const double TIME_FINAL = 60*100; //(s) 30 minute
  * (3) Use transposed transformation matrix on thrust to go from rocket frame to global frame, use this to calculate global acc. Use rocket frame thrust to calculate
  * moment created by thrust.
  * // did it need to verify it works
+ * 
+ * 
+ * NEW DISCOVERY: The rocket rotates without any rotational drag which causes it to just spin like crazy
+ * this is obviously not ideal and would break the system.
+ * 
+ * We need to implement angular drag implemented in answer below
+ * https://physics.stackexchange.com/questions/304742/angular-drag-on-body
+ * 
+ * 
+ * 
  */

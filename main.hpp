@@ -151,6 +151,7 @@ public:
 
     //List of forces on the rocket
     fDrag = new double[DIM]; // just update forces so we don't have to make new memory have time the function is called
+    fDrag_Ang = new double[DIM]; //drag caused by angular motion
     fThrust = new double[DIM];
     fG = new double[DIM];
     inerM = new double[DIM];
@@ -227,6 +228,7 @@ private:
 
   //List of forces on the rocket
   double* fDrag; // just update forces so we don't have to make new memory have time the function is called
+  double* fDrag_Ang;
   double* fThrust;
   double* fG;
 
