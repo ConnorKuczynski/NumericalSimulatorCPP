@@ -1,9 +1,8 @@
-
 #include <iostream>
+#include <fstream>
 #include <cmath>
 #include "main.hpp"
 
-//#include "raylib.h"
 using namespace std;
 
 
@@ -101,19 +100,19 @@ double* Shape::updateIFuel(Tank* t) {  throw std::invalid_argument("Shape update
 
 //RectangularPrism
 
-int RectagularPrism::getAreaLW()
+float RectagularPrism::getAreaLW()
 {
   return length*width;
 }
-int RectagularPrism::getLength()
+float RectagularPrism::getLength()
 {
   return length;
 }
-int RectagularPrism::getWidth()
+float RectagularPrism::getWidth()
 {
   return width;
 }
-int RectagularPrism::getHeight()
+float RectagularPrism::getHeight()
 {
   return height;
 }
@@ -332,18 +331,19 @@ double** Control::initProfile() {
     flight_profile[i] = new double[DIM];
   }
   
-  float x_ang = (PI/180)*5; //radians
-  float y_ang = (PI/180)*5; 
+  float x_ang = (PI/180)*15; //radians
+  float y_ang = (PI/180)*0; 
   float x = sin(x_ang); 
   float y = sin(y_ang); 
   float z = sqrt(1 - pow(x,2) - pow(y,2)); //x^2 + y^2 + z^2 = 1
-  for (int i = 0; i < 100; i++) {
+  
+  for (int i = 0; i < 0; i++) {
     flight_profile[i][X] = MAX_THRUST*x;
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
   }
   
-  for (int i = 100; i < TIME_FINAL/SECS_PER_ITR; i++) {
+  for (int i = 0; i < TIME_FINAL/SECS_PER_ITR; i++) {
       flight_profile[i][X] = 0;
       flight_profile[i][Y] = 0;
       flight_profile[i][Z] = MAX_THRUST;
@@ -570,25 +570,48 @@ string Dynamics::State::to_string()
   output = posStr + velStr + accStr + angStr + ang_velStr + ang_accStr;
   return output;
 }
-  string Dynamics::to_string()
-  {
-    string output = s->to_string();
-    string Istr = "MOMENT OF INERTIA: (";
-    string COMstr = "CENTER OF MASS: (";
-    string massStr = "Mass: (" + std::to_string(r->getMass()) + ")\n";
-    for (int i = 0; i < DIM; i++) {
-      if (i < DIM - 1) { 
-        Istr += (std::to_string(r->getI()[i]) + ","); 
-        COMstr += (std::to_string(r->getCOM()[i]) + ","); 
-      }
-      else { 
-        Istr += (std::to_string(r->getI()[i]) + ")\n"); 
-        COMstr += (std::to_string(r->getCOM()[i]) + ")\n"); 
-      }
-    } 
-    output += (Istr + COMstr + massStr);
-    return output;
+//FORMATING for render. TIME_ELASPED,POS_X,POS_Y,POS_Z,ANG_X,ANG_Y,ANG_Z
+string Dynamics::pos_string(double timeElapsed)
+{
+  string output = "";
+  string posStr = "";
+  string angStr = "";
+  output += std::to_string(timeElapsed);
+  output += ",";
+  for (int i = 0; i < DIM; i++) {
+    if (i < DIM - 1) { 
+      posStr += (std::to_string(s->pos[i]) + ","); 
+      angStr += (std::to_string(s->ang[i]) + ","); 
+    }
+    else { 
+      posStr += (std::to_string(s->pos[i]) + ","); 
+      angStr += (std::to_string(s->ang[i])); 
+    }
   }
+  output += posStr + angStr;
+
+  return output;
+  
+}
+string Dynamics::to_string()
+{
+  string output = s->to_string();
+  string Istr = "MOMENT OF INERTIA: (";
+  string COMstr = "CENTER OF MASS: (";
+  string massStr = "Mass: (" + std::to_string(r->getMass()) + ")\n";
+  for (int i = 0; i < DIM; i++) {
+    if (i < DIM - 1) { 
+      Istr += (std::to_string(r->getI()[i]) + ","); 
+      COMstr += (std::to_string(r->getCOM()[i]) + ","); 
+    }
+    else { 
+      Istr += (std::to_string(r->getI()[i]) + ")\n"); 
+      COMstr += (std::to_string(r->getCOM()[i]) + ")\n"); 
+    }
+  } 
+  output += (Istr + COMstr + massStr);
+  return output;
+}
   void Dynamics::RK4(double dt)
   {
     int n[DIM];
@@ -708,24 +731,16 @@ string Dynamics::State::to_string()
     
 
     this->updateFdrag();
-    if (abs(fDrag[X]) > 1000000) {
-      cout << "STOP" << endl;
-    } 
     this->updateFg();
-    if (abs(fG[X]) > 100000) {
-      cout << "STOP" << endl;
-    } 
     this->updateFThrust(s->prev, dt);
-    if (abs(fThrust[X]) > 100000) {
-      cout << "STOP" << endl;
-    } 
+  
     this->updateNetF(forces);
     this->updateAcc();
 
     this->updateMdrag();
     this->updateMg();
     this->updateMThrust();
-    this->updateInerMom();
+    //this->updateInerMom();
     this->updateNetM(moments);
     this->updateAngAcc();
     s->timeElapsed += dt;
@@ -740,9 +755,13 @@ string Dynamics::State::to_string()
     }
     for (int i = 0; i < DIM; i++)
     {
-      s->ang[i] += dPosdt(dt, s->ang_vel[i], s->ang_acc[i]);
       s->ang_vel[i] += s->ang_acc[i]*dt;
     }
+
+    s->ang[X] += (sin(s->ang[Y])*(1/cos(s->ang[Y]))*s->ang_vel[Y] + cos(s->ang[Z])*(1/cos(s->ang[Y]))*s->ang_vel[Z])*dt;
+    s->ang[Y] += (cos(s->ang[Z])*s->ang_vel[Y] - sin(s->ang[Z])*s->ang_vel[Z])*dt;
+    s->ang[Z] += (s->ang_vel[X] + sin(s->ang[Z])*tan(s->ang[Y])*s->ang_vel[Y] + cos(s->ang[Z])*tan(s->ang[Y])*s->ang_vel[Z])*dt;    
+    
     s->mass = this->r->updateMass(dt);
     this->r->updateCOM();
 
@@ -996,7 +1015,8 @@ string Dynamics::State::to_string()
     double I_Glo[DIM];
     rocketToGlobalFrame(r->getI(), I_Glo);
     for (int i = 0; i < DIM; i++){
-      s->ang_acc[i] = (netM[i]- inerM[i])/(I_Glo[i]);
+      //s->ang_acc[i] = (netM[i]- inerM[i])/(I_Glo[i]);
+      s->ang_acc[i] = (netM[i])/(I_Glo[i]);
     }
   }
   void Dynamics::updateAngVel(double dt) {
@@ -1033,32 +1053,33 @@ Dynamics::State* initState(Rocket* r)
 }
 Shape** initStructure()
 {
-  int length = 10; //meters X
-  int height = 10; //meters Y
-  int width = 10; //meters Z
+  float length = .177; //meters X
+  float height = 7.25; //meters Y
+  float width = .177; //meters Z
   float* P = new float[DIM] {0, 0, 0}; //origin of shape is same as origin of rocket
   double* COV = new double[DIM] {0., 0, height/2.};
-  float* surfaceArea = new float[DIM] {(float)(height*width), (float)(length*width), (float)(length*height)};
+  //float* surfaceArea = new float[DIM] {(float)(height*width), (float)(length*width), (float)(length*height)};
+  float* surfaceArea = new float[DIM] {(float)(1.285), (float)(1.285), (float)(.0314)};
 
   Shape** shapes = new Shape*[1] {new RectagularPrism(surfaceArea,COV,P,length*width*height,length,width,height)};
   return shapes;
 }
 Tank** initTanks() 
 {
-  int length = 10; //meters X
-  int height = 10; //meters Y
-  int width = 10; //meters Z
+  float length = .1; //meters X
+  float height = .1; //meters Y
+  float width = .1; //meters Z
   float* P = new float[DIM] {0, 0, 0}; //origin of tank is same as origin of rocket
   double* COV = new double[DIM] {0, 0, height/2.};
   float* surfaceArea = new float[DIM] {(float)(height*width), (float)(length*width), (float)(length*height)};
 
   Shape* tankShape = new RectagularPrism(surfaceArea,COV,P,length*width*height,length,width,height);
-  float dry_mass = 1000; //kg
+  float dry_mass = 100; //kg
   float massF = 10; //kg
   double mass_vel_out = .1; //kg/s
   double fuelD = 0.657; //kg/m^3
   float volFill = 1; //m^3
-  float fuelHeight = .5; //meters
+  float fuelHeight = .05; //meters
   
   Tank** tanks = new Tank*[1] {new Tank(tankShape, dry_mass, massF, mass_vel_out, fuelD, volFill, fuelHeight)}; 
   return tanks;
@@ -1066,10 +1087,10 @@ Tank** initTanks()
 Rocket* initRocket()
 {
   Shape** shapes = initStructure();
-  int* massParts = new int[1] {1000};
+  int* massParts = new int[1] {500};
   double* cov = (shapes[0])->getCOV();
   float* coeffDrag = new float[DIM] {1.28, 1.28, 1.28}; //https://www.grc.nasa.gov/www/k-12/airplane/shaped.html
-  int d_m = 1000; //kg
+  int d_m = 500; //kg
   float* surfaceArea = shapes[0]->getSA();
   float m_vel_out = .1; //m/s set as a parameters before, not actually used for anything currently, mass changes are handled in the tanks
   int numTanks = 1;
@@ -1090,12 +1111,28 @@ Control* initControl()
 {
   return (new Control(new double[DIM] {0,0,0}));
 }
-void sampleData(Dynamics* sys, double timeElapsed)
+//void graphData(vector<boost::tuple<double, double>> data) {
+ // Gnuplot gp;
+	// Create a script which can be manually fed into gnuplot later:
+	//    Gnuplot gp(">script.gp");
+	// Create script and also feed to gnuplot:
+	//    Gnuplot gp("tee plot.gp | gnuplot -persist");
+	// Or choose any of those options at runtime by setting the GNUPLOT_IOSTREAM_CMD
+	// environment variable.
+
+	// Gnuplot vectors (i.e. arrows) require four columns: (x,y,dx,dy)
+	
+	// Don't forget to put "\n" at the end of each line!
+//	gp << "set xrange [0:60]\nset yrange [0:10000]\n";
+	// '-' means read from stdin.  The send1d() function sends data to gnuplot's stdin.
+//	gp << "plot '-' with vectors title 'time', '-' with vectors title 'Height'\n";
+//	gp.send1d(data);
+//}
+void sampleData(Dynamics* sys, double timeElapsed, ofstream* dataFile)
 {
-  if (timeElapsed > 60*80) {
-    cout << "CHECK VALUES" << "\n";
-  }
-  cout << sys->to_string() << "\n";
+  //cout << sys->to_string() << "\n";
+  *dataFile << sys->pos_string(timeElapsed) << "\n";
+  //sys->time_vs_height.push_back(boost::make_tuple(timeElapsed, sys->s->pos[Z]));
 }
 int main() {
   double timeElapsed = 0;
@@ -1106,87 +1143,28 @@ int main() {
   Dynamics::State* s = initState(r);
   Dynamics* sys = new Dynamics(r, initEnvironment(), initControl(), s);
 
+  //FILE *ofp;
+
+  ofstream results;
+  results.open("results.txt");
+
+
+  
+ 
   while (timeElapsed < TIME_FINAL) {
     sys->euler(dt);
 
     timeElapsed += dt;
     if (secs >= secsPerSample) 
     {
-      sampleData(sys, timeElapsed); 
+      sampleData(sys, timeElapsed, &results); 
       secs = dt; 
     }
     else { secs += dt; }
   }
-  cout << "DONE";
 
-  //RENDERING POSITIONAL DATA
-/*
-// Initialization
-    //--------------------------------------------------------------------------------------
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+  //graphData(sys->time_vs_height);
+  results.close();
 
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera free");
-
-    // Define the camera to look into our 3d world
-    Camera3D camera = { 0 };
-    camera.position = (Vector3){ 10.0f, 10.0f, 10.0f }; // Camera position
-    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };      // Camera looking at point
-    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
-    camera.fovy = 45.0f;                                // Camera field-of-view Y
-    camera.projection = CAMERA_PERSPECTIVE;                   // Camera mode type
-
-    Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
-
-    SetCameraMode(camera, CAMERA_FREE); // Set a free camera mode
-
-    SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
-    //--------------------------------------------------------------------------------------
-
-    // Main game loop
-    while (!WindowShouldClose())        // Detect window close button or ESC key
-    {
-        // Update
-        //----------------------------------------------------------------------------------
-        UpdateCamera(&camera);          // Update camera
-
-        if (IsKeyDown('Z')) camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
-        //----------------------------------------------------------------------------------
-
-        // Draw
-        //----------------------------------------------------------------------------------
-        BeginDrawing();
-
-            ClearBackground(RAYWHITE);
-
-            BeginMode3D(camera);
-
-                DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
-                DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
-
-                DrawGrid(10, 1.0f);
-
-            EndMode3D();
-
-            DrawRectangle( 10, 10, 320, 133, Fade(SKYBLUE, 0.5f));
-            DrawRectangleLines( 10, 10, 320, 133, BLUE);
-
-            DrawText("Free camera default controls:", 20, 20, 10, BLACK);
-            DrawText("- Mouse Wheel to Zoom in-out", 40, 40, 10, DARKGRAY);
-            DrawText("- Mouse Wheel Pressed to Pan", 40, 60, 10, DARKGRAY);
-            DrawText("- Alt + Mouse Wheel Pressed to Rotate", 40, 80, 10, DARKGRAY);
-            DrawText("- Alt + Ctrl + Mouse Wheel Pressed for Smooth Zoom", 40, 100, 10, DARKGRAY);
-            DrawText("- Z to zoom to (0, 0, 0)", 40, 120, 10, DARKGRAY);
-
-        EndDrawing();
-        //----------------------------------------------------------------------------------
-    }
-
-    // De-Initialization
-    //--------------------------------------------------------------------------------------
-    CloseWindow();        // Close window and OpenGL context
-    //--------------------------------------------------------------------------------------
-
-    return 0;
-*/
+  return 0;
 }

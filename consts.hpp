@@ -12,13 +12,12 @@ const int Z = 2;
 //In theory we could change this so that we can precisely control the thrust vector at each specified time instant
 
 
-const int HOVER = 0; //maintain a accerlation of zero
-const float MAX_THRUST = 50000; //maintain a constant maximium thrust in positive Z direction
+const float MAX_THRUST = 8896; //maintain a constant maximium thrust in positive Z direction
 
 
 //SIMULATION PARAMETERS
 
-double dt = .000001; // seconds per physics tick, may be changed to a variable time step if needed
+double dt = .00001; // seconds per physics tick, may be changed to a variable time step if needed
 const int loopPerSample = 10000; //sample rate for simulation 
 const double SECS_PER_ITR = .001; //1 ms for each iteration in flight profile
 const double TIME_FINAL = 60; //(s) 30 minute

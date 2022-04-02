@@ -7,7 +7,7 @@ class Environment;
 class Control;
 class Shape {
   public:
-    Shape(float SA[], double COV[], float origin[], int volume) 
+    Shape(float SA[], double COV[], float origin[], float volume) 
     : sa(SA), cov(COV), P(origin), vol(volume) {
       updateCOVLocal();
     }
@@ -27,27 +27,27 @@ class Shape {
     double* const cov; // center of volume (dry mass not considering liquid that is handled by Tank class)
     float* const P; // distance from P to local P
     double* const covLocal = new double[DIM];
-    const int vol;
+    const float vol;
     double* I = new double[DIM];
 };
 class RectagularPrism : public Shape
 {
   public:
-    RectagularPrism(float SA[], double COV[], float P[], double volume, int leng, int wid, int hei) 
+    RectagularPrism(float SA[], double COV[], float P[], double volume, float leng, float wid, float hei) 
     : Shape(SA, COV, P, volume), length(leng), width(wid), height(hei) {}
-    int getAreaLW();
-    int getLength();
-    int getWidth();
-    int getHeight();
+    float getAreaLW();
+    float getLength();
+    float getWidth();
+    float getHeight();
     void updateFilledVolume(Tank* t, double dltaM) override;
     double* updateIFuel(Tank* t) override;
     double* updateI(float mass) override;
     void updateCOM(float* com, float fuelH, float fuelM, float dry_mass) override;
     
   private:
-    int length;
-    int width;
-    int height;
+    float length;
+    float width;
+    float height;
 };
 class Sphere : public Shape
 {
@@ -118,11 +118,11 @@ public:
       public:
         State(double* angle, double* position, double* velo, double* ang_velo, double* acce, double* ang_acce, int m)
         {
-          ang = angle; //global frame variables 
+          ang = angle; //euler angle (this is not the same as inertial frame)
           pos = position; //distance from global origin to rocket origin
           vel = velo;
-          ang_vel = ang_velo;
-          ang_acc = ang_acce;
+          ang_vel = ang_velo; //rotation in inertial frame
+          ang_acc = ang_acce; //rotation in inertial frame
           acc = acce;
           mass = m;
           timeElapsed = 0;
@@ -167,6 +167,7 @@ public:
     
   }
   string to_string();
+  string pos_string(double elaspedTime);
   void RK4(double dt);
   void updateState(double dt);
   void euler(double dt);
@@ -220,6 +221,9 @@ public:
   void updateAngVel(double dt);
   void updateAng(double dt);
   void updateAng(double dt, double ang_vel[]);
+
+  //vector<boost::tuple<double, double>> time_vs_height;
+  State* s;
 private:
   
   
@@ -243,7 +247,7 @@ private:
   Rocket* r;
   Environment* e;
   Control* c;
-  State* s;
+  
 };
 class Control {
   public:
