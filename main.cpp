@@ -297,7 +297,7 @@ double* Control::updateThrust(Dynamics::State* s, Rocket* r, float fuelMass, dou
   
   updateProfile(dt); 
   
-  if (fuelMass < 0) {
+  if (fuelMass <= 0) {
     for (int i = 0; i < DIM; i++) {
       thrust[i] = 0;
     }
@@ -331,19 +331,20 @@ double** Control::initProfile() {
     flight_profile[i] = new double[DIM];
   }
   
-  float x_ang = (PI/180)*15; //radians
-  float y_ang = (PI/180)*0; 
+  float x_ang = (PI/180)*10; //radians
+  float y_ang = (PI/180)*10; 
   float x = sin(x_ang); 
   float y = sin(y_ang); 
   float z = sqrt(1 - pow(x,2) - pow(y,2)); //x^2 + y^2 + z^2 = 1
   
-  for (int i = 0; i < 0; i++) {
+  int SPLIT = 120000;
+  for (int i = 0; i < SPLIT; i++) {
     flight_profile[i][X] = MAX_THRUST*x;
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
   }
   
-  for (int i = 0; i < TIME_FINAL/SECS_PER_ITR; i++) {
+  for (int i = SPLIT; i < TIME_FINAL/SECS_PER_ITR; i++) {
       flight_profile[i][X] = 0;
       flight_profile[i][Y] = 0;
       flight_profile[i][Z] = MAX_THRUST;
@@ -588,7 +589,12 @@ string Dynamics::pos_string(double timeElapsed)
       angStr += (std::to_string(s->ang[i])); 
     }
   }
-  output += posStr + angStr;
+  int fuelMass = 0;
+  for (int i = 0; i < r->getNumTanks(); i++)
+  {
+    fuelMass += r->getTanks()[i]->getFuelMass();
+  }
+  output += posStr + angStr + "," + std::to_string(fuelMass);
 
   return output;
   
@@ -753,6 +759,8 @@ string Dynamics::to_string()
       s->pos[i] += dPosdt(dt, s->vel[i], s->acc[i]);
       s->vel[i] += s->acc[i]*dt;
     }
+    //cout << "Z thrust " << fThrust[Z];
+    //cout << " X thrust " << fThrust[X] << "\n"; 
     for (int i = 0; i < DIM; i++)
     {
       s->ang_vel[i] += s->ang_acc[i]*dt;
@@ -1012,11 +1020,17 @@ string Dynamics::to_string()
 
   void Dynamics::updateAngAcc()
   {
-    double I_Glo[DIM];
-    rocketToGlobalFrame(r->getI(), I_Glo);
+    // Not sure if it should be I body or I global
+    //double I_Glo[DIM];
+    //rocketToGlobalFrame(r->getI(), I_Glo);
     for (int i = 0; i < DIM; i++){
       //s->ang_acc[i] = (netM[i]- inerM[i])/(I_Glo[i]);
-      s->ang_acc[i] = (netM[i])/(I_Glo[i]);
+      //ang_acc[X] = (moment[X] + (Iyy - Izz)*ang_vel[Y]*ang_vel[Z])/Ixx
+      //ang_acc[Y] = (moment[Y] + (Izz - Ixx)*ang_vel[X]*ang_vel[Z])/Iyy
+      //ang_acc[Z] = (moment[X] + (Ixx - Iyy)*ang_vel[X]*ang_vel[Y])/Izz
+      s->ang_acc[X] = (netM[X] + (r->getI()[Y] - r->getI()[Z])*s->ang_vel[Y]*s->ang_vel[Z])/r->getI()[X];
+      s->ang_acc[Y] = (netM[Y] + (r->getI()[Z] - r->getI()[X])*s->ang_vel[X]*s->ang_vel[Z])/r->getI()[Y];
+      s->ang_acc[Z] = (netM[Z] + (r->getI()[X] - r->getI()[Y])*s->ang_vel[Y]*s->ang_vel[X])/r->getI()[Z];
     }
   }
   void Dynamics::updateAngVel(double dt) {
@@ -1075,7 +1089,7 @@ Tank** initTanks()
 
   Shape* tankShape = new RectagularPrism(surfaceArea,COV,P,length*width*height,length,width,height);
   float dry_mass = 100; //kg
-  float massF = 10; //kg
+  float massF = 5; //kg
   double mass_vel_out = .1; //kg/s
   double fuelD = 0.657; //kg/m^3
   float volFill = 1; //m^3
@@ -1148,7 +1162,10 @@ int main() {
   ofstream results;
   results.open("results.txt");
 
-
+  if (!results.good()) {
+    cout << "Can't open file";
+    exit(1);
+  }
   
  
   while (timeElapsed < TIME_FINAL) {
@@ -1157,13 +1174,15 @@ int main() {
     timeElapsed += dt;
     if (secs >= secsPerSample) 
     {
-      sampleData(sys, timeElapsed, &results); 
+      sampleData(sys, timeElapsed, &results);
+      
       secs = dt; 
     }
     else { secs += dt; }
   }
 
   //graphData(sys->time_vs_height);
+  results.flush(); 
   results.close();
 
   return 0;

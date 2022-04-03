@@ -20,7 +20,7 @@ const float MAX_THRUST = 8896; //maintain a constant maximium thrust in positive
 double dt = .00001; // seconds per physics tick, may be changed to a variable time step if needed
 const int loopPerSample = 10000; //sample rate for simulation 
 const double SECS_PER_ITR = .001; //1 ms for each iteration in flight profile
-const double TIME_FINAL = 60; //(s) 30 minute
+const double TIME_FINAL = 4*60; //(s) 30 minute
 
 
 
@@ -43,13 +43,18 @@ const double TIME_FINAL = 60; //(s) 30 minute
  * moment created by thrust.
  * // did it need to verify it works
  * 
- * 
+ * Below implement if spins out of control
  * NEW DISCOVERY: The rocket rotates without any rotational drag which causes it to just spin like crazy
  * this is obviously not ideal and would break the system.
  * 
  * We need to implement angular drag implemented in answer below
  * https://physics.stackexchange.com/questions/304742/angular-drag-on-body
  * 
- * 
- * 
+ * We are going to try doing a tensor for I. Right now I is Ixx, Iyy, Izz.
+ * (Ixx 0 0)
+ * (0 Iyy 0)
+ * (0  0 Izz)
+ * ang_acc[X] = (moment[X] + (Iyy - Izz)*ang_vel[Y]*ang_vel[Z])/Ixx
+ * ang_acc[Y] = (moment[Y] + (Izz - Ixx)*ang_vel[Y]*ang_vel[Z])/Iyy
+ * ang_acc[Z] = (moment[X] + (Ixx - Iyy)*ang_vel[X]*ang_vel[Y])/Izz
  */

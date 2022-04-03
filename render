@@ -1,0 +1,32 @@
+#!/bin/bash
+while getopts ":srb" opt; do
+  case "${opt}" in
+    s)
+      g++ main.cpp -o main.exe
+      ./main.exe
+      ;;
+    r)
+      cd 3DRendering || exit
+      make
+      ./render.exe
+      cd ../3DRendering || exit
+      ;;  
+    b)
+      g++ main.cpp -o main.exe
+      ./main.exe 
+      cd 3DRendering || exit
+      make
+      ./render.exe
+      cd ../3DRendering || exit
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      exit 1
+      ;;
+  esac
+done
+
