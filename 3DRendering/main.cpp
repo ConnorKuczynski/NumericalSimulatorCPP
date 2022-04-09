@@ -5,16 +5,54 @@
 #include <vector>
 #include <array>
 #include <sstream>
+#include <thread>
+#include <cmath>
+#include <chrono>
 #include "rlgl.h"
 using namespace std;
+
+void normalize(std::vector<float>* arr, int scale) {
+    
+    double mod = 0.0;
+
+    for (size_t i = 0; i < (*arr).size(); ++i) {
+        mod += (*arr)[i] * (*arr)[i];
+    }
+
+    double mag = sqrt(mod);
+
+    if (mag == 0) {
+        throw std::logic_error("The input vector is a zero vector");
+    }
+
+    for (size_t i = 0; i < (*arr).size(); ++i) {
+        (*arr)[i] = ((*arr)[i] / mag)*scale;
+    }
+}
+void log_vec(std::vector<float>* arr, int scale) {
+    for (size_t i = 0; i < (*arr).size(); ++i) {
+        (*arr)[i] = log((*arr)[i]);
+    }
+    
+}
+float magnitude(std::vector<float>* arr) {
+    float sum = 0; 
+    for (float val: *arr) {
+        sum += pow(val,2);
+    }
+    sum = sqrt(sum);
+    return sum;
+}
 int main(void)
 {
     ifstream programCode ("../results.txt");
     vector<vector<float>> pos;
     vector<vector<float>> ang;
+    vector<vector<float>> vel;
+    vector<vector<float>> acc;
     vector<float> timeElapsed;
     vector<float> fuel;
-
+    int scale = 10;
     string data;
     
     if (!programCode.is_open())
@@ -43,7 +81,7 @@ int main(void)
             pos_arr.push_back(stof(substr));
 
             pos.push_back(pos_arr);
-            //cout << pos.front()[0] << "\n";
+     
             vector<float> ang_arr;
             getline(ss, substr, ',');
             ang_arr.push_back(stof(substr));
@@ -55,6 +93,32 @@ int main(void)
             ang_arr.push_back(stof(substr));
 
             ang.push_back(ang_arr);
+
+            vector<float> vel_arr;
+            getline(ss, substr, ',');
+            vel_arr.push_back(stof(substr));
+
+            getline(ss, substr, ',');
+            vel_arr.push_back(stof(substr));
+
+            getline(ss, substr, ',');
+            vel_arr.push_back(stof(substr));
+
+            vel.push_back(vel_arr);
+
+            vector<float> acc_arr;
+            getline(ss, substr, ',');
+            acc_arr.push_back(stof(substr));
+
+            getline(ss, substr, ',');
+            acc_arr.push_back(stof(substr));
+
+            getline(ss, substr, ',');
+            acc_arr.push_back(stof(substr));
+
+            acc.push_back(acc_arr);
+
+            
 
             getline(ss, substr);
             fuel.push_back(stof(substr));
@@ -82,11 +146,53 @@ int main(void)
     
     Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
     //DrawModel(rocket, cubePosition, 1.0f, RED);
+    //auto timeNow = std::chrono::high_resolution_clock::now();
+    //auto timePrevious = timeNow;
     
+    //float simTime = timeElapsed.front();
+    //float simTimePast = 0.0f;
 
-    SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
+    //SetTargetFPS(10);               // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
+    string timeELapsed_str = "Time Elapsed (s) " + std::to_string(timeElapsed.front());
+    //simTime = timeElapsed.front();
+    const char* timeElapsed_charPtr = timeELapsed_str.c_str();
+    timeElapsed.erase(timeElapsed.begin());
 
+    float ang_x = ang.front()[0];
+    float ang_y = ang.front()[1];
+    float ang_z = ang.front()[2];
+    ang.erase(ang.begin());
+
+    vector<float> velVec = vel.front();
+    float vel_mag = magnitude(&velVec);
+    string vel_str = "Vel: \nX:" + to_string(velVec[0]) + "\nY:" + to_string(velVec[1])  + "\nZ:" + to_string(velVec[2]) + "\nMag:" + to_string(vel_mag); 
+    const char* vel_ptr = vel_str.c_str();
+    
+    normalize(&(vel.front()),scale);
+    float vel_x = vel.front()[0];
+    float vel_y = vel.front()[1];
+    float vel_z = vel.front()[2];
+    vel.erase(vel.begin());
+
+    vector<float> accVec = acc.front();
+    float acc_mag = magnitude(&accVec);
+    string acc_str = "Acc: \nX:" + to_string(accVec[0]) + "\nY:" + to_string(accVec[1])  + "\nZ:" + to_string(accVec[2]) + "\nMag:" + to_string(acc_mag);; 
+    const char* acc_ptr = acc_str.c_str();
+    
+    normalize(&(acc.front()),scale);
+    float acc_x = acc.front()[0];
+    float acc_y = acc.front()[1];
+    float acc_z = acc.front()[2];
+    acc.erase(acc.begin());
+
+    string fuel_str = "Fuel (kg) " + std::to_string(fuel.front());
+    const char* fuel_ptr = fuel_str.c_str();
+    fuel.erase(fuel.begin());
+
+    auto timePrevious = std::chrono::high_resolution_clock::now();
+    auto timeNow = std::chrono::high_resolution_clock::now();
+    long long dlta = 0;
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
@@ -94,19 +200,60 @@ int main(void)
         //----------------------------------------------------------------------------------
         // TODO: Update your variables here
         //----------------------------------------------------------------------------------
+        /*
+        float wait_time = (simTime - simTimePast) - pow(10,-9)*std::chrono::duration_cast<std::chrono::nanoseconds>(timeNow-timePrevious).count();
+        cout << (wait_time*1000ms).count() << "\n";
+        cout << wait_time << "\n";
+        simTimePast = simTime;
+        timePrevious = std::chrono::high_resolution_clock::now();
         
-        string timeELapsed_str = "Time Elapsed (s) " + std::to_string(timeElapsed.front());
-        const char* timeElapsed_charPtr = timeELapsed_str.c_str();
-        timeElapsed.erase(timeElapsed.begin());
 
-        int ang_x = ang.front()[0];
-        int ang_y = ang.front()[1];
-        int ang_z = ang.front()[2];
-        ang.erase(ang.begin());
+        std::this_thread::sleep_for((wait_time*1000ms));
+        timeNow = std::chrono::high_resolution_clock::now();
+        */
+        timePrevious = timeNow;
+        timeNow = std::chrono::high_resolution_clock::now(); 
+        //cout << std::chrono::duration<float>(timeNow-timePrevious).count() << '\n';
+        dlta += std::chrono::duration_cast<std::chrono::nanoseconds>(timeNow-timePrevious).count();
+        if (dlta > 100000000) {
+            dlta -= 100000000;
+            timePrevious = timeNow;
+            timeELapsed_str = "Time Elapsed (s) " + std::to_string(timeElapsed.front());
+            //simTime = timeElapsed.front();
+            timeElapsed_charPtr = timeELapsed_str.c_str();
+            timeElapsed.erase(timeElapsed.begin());
 
-        string fuel_str = "Fuel (kg) " + std::to_string(fuel.front());
-        const char* fuel_ptr = fuel_str.c_str();
-        fuel.erase(fuel.begin());
+            ang_x = ang.front()[0];
+            ang_y = ang.front()[1];
+            ang_z = ang.front()[2];
+            ang.erase(ang.begin());
+
+            velVec = vel.front();
+            vel_mag = magnitude(&velVec);
+            vel_str = "Vel: \nX:" + to_string(velVec[0]) + "\nY:" + to_string(velVec[1])  + "\nZ:" + to_string(velVec[2]) + "\nMag:" + to_string(vel_mag); 
+            vel_ptr = vel_str.c_str();
+
+            normalize(&(vel.front()),scale);
+            vel_x = vel.front()[0];
+            vel_y = vel.front()[1];
+            vel_z = vel.front()[2];
+            vel.erase(vel.begin());
+
+            accVec = acc.front();
+            acc_mag = magnitude(&accVec);
+            acc_str = "Acc: \nX:" + to_string(accVec[0]) + "\nY:" + to_string(accVec[1])  + "\nZ:" + to_string(accVec[2]) + "\nMag:" + to_string(acc_mag);; 
+            acc_ptr = acc_str.c_str();
+
+            normalize(&(acc.front()),scale);
+            acc_x = acc.front()[0];
+            acc_y = acc.front()[1];
+            acc_z = acc.front()[2];
+            acc.erase(acc.begin());
+
+            fuel_str = "Fuel (kg) " + std::to_string(fuel.front());
+            fuel_ptr = fuel_str.c_str();
+            fuel.erase(fuel.begin());
+        }
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
@@ -118,13 +265,14 @@ int main(void)
                 rlPushMatrix();
                 //rlTranslatef(0,) //need to center on pivot point (bottom center of rocket)
                 rlRotatef(ang_x,1,0,0);
-                rlRotatef(ang_y,0,1,0);
-                rlRotatef(ang_z,0,0,1);
-                DrawModel(rocket, cubePosition, .005f, BLACK);
+                rlRotatef(ang_z,0,1,0);
+                rlRotatef(ang_y,0,0,1);
+                DrawModel(rocket, cubePosition, .005f, WHITE);
                 rlPopMatrix();
+                DrawLine3D(cubePosition, {vel_x,vel_z,vel_y}, RED);
+                DrawLine3D(cubePosition, {acc_x,acc_z,acc_y}, BLUE);
                 DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
-
-                DrawGrid(10, 1.0f);
+                DrawGrid(20, 1.0f);
 
             EndMode3D();
             //string timeELapsed_str = "Time Elapsed (s) " + std::to_string(timeElapsed.front());
@@ -133,10 +281,14 @@ int main(void)
 
             DrawText(timeElapsed_charPtr, 10, 40, 20, DARKGRAY);
             DrawText(fuel_ptr, 60, 80, 20, DARKGRAY);
+            DrawText(vel_ptr, 60, 120, 20, DARKGRAY);
+            DrawText(acc_ptr, 60, 280, 20, DARKGRAY);
 
             DrawFPS(10, 10);
 
         EndDrawing();
+
+        //timeNow = std::chrono::high_resolution_clock::now();
         //----------------------------------------------------------------------------------
     }
     UnloadModel(rocket);

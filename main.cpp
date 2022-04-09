@@ -6,7 +6,7 @@
 using namespace std;
 
 
-
+//TODO change the normalized vector by log of magnitude
 
 /*
  * stores all the physical parameters of the rocket
@@ -331,14 +331,24 @@ double** Control::initProfile() {
     flight_profile[i] = new double[DIM];
   }
   
-  float x_ang = (PI/180)*10; //radians
-  float y_ang = (PI/180)*10; 
+  float x_ang = (PI/180)*3; //radians
+  float y_ang = (PI/180); 
   float x = sin(x_ang); 
-  float y = sin(y_ang); 
+  float y = sin(y_ang);
+   
   float z = sqrt(1 - pow(x,2) - pow(y,2)); //x^2 + y^2 + z^2 = 1
   
   int SPLIT = 120000;
-  for (int i = 0; i < SPLIT; i++) {
+  for (int i = 0; i < SPLIT/2; i++) {
+    flight_profile[i][X] = MAX_THRUST*x;
+    flight_profile[i][Y] = MAX_THRUST*y;
+    flight_profile[i][Z] = MAX_THRUST*z;
+  }
+  x_ang = (PI/180)*-3; //radians
+  y_ang = (PI/180); 
+  x = sin(x_ang); 
+  y = sin(y_ang);
+  for (int i = SPLIT/2; i < SPLIT; i++) {
     flight_profile[i][X] = MAX_THRUST*x;
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
@@ -576,25 +586,23 @@ string Dynamics::pos_string(double timeElapsed)
 {
   string output = "";
   string posStr = "";
+  string velStr = "";
+  string accStr = "";
   string angStr = "";
   output += std::to_string(timeElapsed);
   output += ",";
   for (int i = 0; i < DIM; i++) {
-    if (i < DIM - 1) { 
       posStr += (std::to_string(s->pos[i]) + ","); 
       angStr += (std::to_string(s->ang[i]) + ","); 
-    }
-    else { 
-      posStr += (std::to_string(s->pos[i]) + ","); 
-      angStr += (std::to_string(s->ang[i])); 
-    }
+      velStr += (std::to_string(s->vel[i]) + ","); 
+      accStr += (std::to_string(s->acc[i]) + ","); 
   }
   int fuelMass = 0;
   for (int i = 0; i < r->getNumTanks(); i++)
   {
     fuelMass += r->getTanks()[i]->getFuelMass();
   }
-  output += posStr + angStr + "," + std::to_string(fuelMass);
+  output += posStr + angStr + velStr + accStr + std::to_string(fuelMass);
 
   return output;
   
