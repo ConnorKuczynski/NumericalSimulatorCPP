@@ -1,4 +1,5 @@
 #include "consts.hpp"
+const double PI = 3.14159;
 using namespace std;
 class Tank;
 class Rocket;

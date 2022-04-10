@@ -331,8 +331,8 @@ double** Control::initProfile() {
     flight_profile[i] = new double[DIM];
   }
   
-  float x_ang = (PI/180)*3; //radians
-  float y_ang = (PI/180); 
+  float x_ang = (PI/180)*15; //radians
+  float y_ang = (PI/180)*0; 
   float x = sin(x_ang); 
   float y = sin(y_ang);
    
@@ -344,8 +344,8 @@ double** Control::initProfile() {
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
   }
-  x_ang = (PI/180)*-3; //radians
-  y_ang = (PI/180); 
+  x_ang = (PI/180)*0; //radians
+  y_ang = (PI/180)*0; 
   x = sin(x_ang); 
   y = sin(y_ang);
   for (int i = SPLIT/2; i < SPLIT; i++) {
@@ -353,11 +353,14 @@ double** Control::initProfile() {
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
   }
-  
+  x_ang = (PI/180)*0; //radians
+  y_ang = (PI/180)*0; 
+  x = sin(x_ang); 
+  y = sin(y_ang);
   for (int i = SPLIT; i < TIME_FINAL/SECS_PER_ITR; i++) {
-      flight_profile[i][X] = 0;
-      flight_profile[i][Y] = 0;
-      flight_profile[i][Z] = MAX_THRUST;
+    flight_profile[i][X] = MAX_THRUST*x;
+    flight_profile[i][Y] = MAX_THRUST*y;
+    flight_profile[i][Z] = MAX_THRUST*z;
   }
   return flight_profile;
 }
@@ -919,7 +922,7 @@ string Dynamics::to_string()
     double* thrust_roc = c->updateThrust(s, r, fuelMass, dt);
 
     rocketToGlobalFrame(thrust_roc, fThrust);
-
+    //cout << "X: " + std::to_string(fThrust[X]) + " Y: " + std::to_string(fThrust[Y]) + " Z: " + std::to_string(fThrust[Z]) + "\n";
   }
   
   void Dynamics::updateMThrust()
@@ -1097,7 +1100,7 @@ Tank** initTanks()
 
   Shape* tankShape = new RectagularPrism(surfaceArea,COV,P,length*width*height,length,width,height);
   float dry_mass = 100; //kg
-  float massF = 5; //kg
+  float massF = 10; //kg CHANGE THIS FOR AMOUNT OF FUEL
   double mass_vel_out = .1; //kg/s
   double fuelD = 0.657; //kg/m^3
   float volFill = 1; //m^3
@@ -1111,7 +1114,7 @@ Rocket* initRocket()
   Shape** shapes = initStructure();
   int* massParts = new int[1] {500};
   double* cov = (shapes[0])->getCOV();
-  float* coeffDrag = new float[DIM] {1.28, 1.28, 1.28}; //https://www.grc.nasa.gov/www/k-12/airplane/shaped.html
+  float* coeffDrag = new float[DIM] {1.28, 1.28, .295}; //https://www.grc.nasa.gov/www/k-12/airplane/shaped.html
   int d_m = 500; //kg
   float* surfaceArea = shapes[0]->getSA();
   float m_vel_out = .1; //m/s set as a parameters before, not actually used for anything currently, mass changes are handled in the tanks
