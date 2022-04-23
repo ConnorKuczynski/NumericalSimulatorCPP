@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <cmath>
 #include "main.hpp"
 
@@ -307,6 +308,7 @@ double* Control::updateThrust(Dynamics::State* s, Rocket* r, float fuelMass, dou
     for (int i = 0; i < DIM; i++) {
       thrust[i] = flight_profile[time_itr][i];
     }
+
   }
   //cout << time_itr << "/" << (int)(TIME_FINAL/SECS_PER_ITR) << endl;
   /*
@@ -331,7 +333,7 @@ double** Control::initProfile() {
     flight_profile[i] = new double[DIM];
   }
   
-  float x_ang = (PI/180)*15; //radians
+  float x_ang = (PI/180)*20; //radians
   float y_ang = (PI/180)*0; 
   float x = sin(x_ang); 
   float y = sin(y_ang);
@@ -339,7 +341,7 @@ double** Control::initProfile() {
   float z = sqrt(1 - pow(x,2) - pow(y,2)); //x^2 + y^2 + z^2 = 1
   
   int SPLIT = 120000;
-  for (int i = 0; i < SPLIT/2; i++) {
+  for (int i = 0; i < (int)(SPLIT/2.0f); i++) {
     flight_profile[i][X] = MAX_THRUST*x;
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
@@ -348,7 +350,7 @@ double** Control::initProfile() {
   y_ang = (PI/180)*0; 
   x = sin(x_ang); 
   y = sin(y_ang);
-  for (int i = SPLIT/2; i < SPLIT; i++) {
+  for (int i = (int)(SPLIT/2.0f); i < SPLIT; i++) {
     flight_profile[i][X] = MAX_THRUST*x;
     flight_profile[i][Y] = MAX_THRUST*y;
     flight_profile[i][Z] = MAX_THRUST*z;
@@ -596,7 +598,7 @@ string Dynamics::pos_string(double timeElapsed)
   output += ",";
   for (int i = 0; i < DIM; i++) {
       posStr += (std::to_string(s->pos[i]) + ","); 
-      angStr += (std::to_string(s->ang[i]) + ","); 
+      angStr += (std::to_string((180.0f/PI)*s->ang[i]) + ","); 
       velStr += (std::to_string(s->vel[i]) + ","); 
       accStr += (std::to_string(s->acc[i]) + ","); 
   }
@@ -743,14 +745,15 @@ string Dynamics::to_string()
     
   }
   void Dynamics::updateState(double dt) {
-    double* forces[3] = {fDrag,fThrust,fG};
-    double* moments[3] = {mDrag,mThrust,mG};
+    double* forces[3] = {fThrust, fDrag, fG}; //fDrag
+    double* moments[3] = {mThrust, mDrag, mG}; //mDrag
     
 
     this->updateFdrag();
     this->updateFg();
     this->updateFThrust(s->prev, dt);
-  
+
+
     this->updateNetF(forces);
     this->updateAcc();
 
@@ -775,11 +778,14 @@ string Dynamics::to_string()
     for (int i = 0; i < DIM; i++)
     {
       s->ang_vel[i] += s->ang_acc[i]*dt;
+    // if (s->ang_vel[Y] > (double)0) { cout << std::setprecision(7) << s->ang_vel[Y] << "BAD PRECISION\n"; exit(1);};
     }
 
     s->ang[X] += (sin(s->ang[Y])*(1/cos(s->ang[Y]))*s->ang_vel[Y] + cos(s->ang[Z])*(1/cos(s->ang[Y]))*s->ang_vel[Z])*dt;
     s->ang[Y] += (cos(s->ang[Z])*s->ang_vel[Y] - sin(s->ang[Z])*s->ang_vel[Z])*dt;
-    s->ang[Z] += (s->ang_vel[X] + sin(s->ang[Z])*tan(s->ang[Y])*s->ang_vel[Y] + cos(s->ang[Z])*tan(s->ang[Y])*s->ang_vel[Z])*dt;    
+    s->ang[Z] += (s->ang_vel[X] + sin(s->ang[Z])*tan(s->ang[Y])*s->ang_vel[Y] + cos(s->ang[Z])*tan(s->ang[Y])*s->ang_vel[Z])*dt; 
+    //cout << "X: " + std::to_string(s->ang[X]) + " Y: " + std::to_string(s->ang[Y]) + " Z: " + std::to_string(s->ang[Z]) + "\n";
+       
     
     s->mass = this->r->updateMass(dt);
     this->r->updateCOM();
@@ -864,12 +870,12 @@ string Dynamics::to_string()
     for (int i = 0; i < DIM; i++) {
       dist[i] = r->getCOP()[i];
     }
-    /*
+    
     double fDrag_Tot[DIM];
     for (int i = 0; i < DIM; i++) {
       fDrag_Tot[i] = fDrag[i]; //+ fDrag_Ang[i];
     }
-    */
+    
     double fDrag_Roc[DIM];
     globalToRocketFrame(fDrag_Roc, fDrag);
     crossProduct(dist, fDrag_Roc, mDrag);
@@ -923,12 +929,18 @@ string Dynamics::to_string()
 
     rocketToGlobalFrame(thrust_roc, fThrust);
     //cout << "X: " + std::to_string(fThrust[X]) + " Y: " + std::to_string(fThrust[Y]) + " Z: " + std::to_string(fThrust[Z]) + "\n";
+    
   }
   
   void Dynamics::updateMThrust()
   {
     //c->getThrust() is thrust from rocket plane
+    //cout << "X: " + std::to_string(fThrust[X]) + " Y: " + std::to_string(fThrust[Y]) + " Z: " + std::to_string(fThrust[Z]) + "\n";
+
     crossProduct(r->getCOM(), c->getThrust(), mThrust);
+    //cout << "X: " + std::to_string(fThrust[X]) + " Y: " + std::to_string(fThrust[Y]) + " Z: " + std::to_string(fThrust[Z]) + "\n";
+
+    
   }
 
   //moment caused by movement
@@ -1038,10 +1050,10 @@ string Dynamics::to_string()
       //s->ang_acc[i] = (netM[i]- inerM[i])/(I_Glo[i]);
       //ang_acc[X] = (moment[X] + (Iyy - Izz)*ang_vel[Y]*ang_vel[Z])/Ixx
       //ang_acc[Y] = (moment[Y] + (Izz - Ixx)*ang_vel[X]*ang_vel[Z])/Iyy
-      //ang_acc[Z] = (moment[X] + (Ixx - Iyy)*ang_vel[X]*ang_vel[Y])/Izz
-      s->ang_acc[X] = (netM[X] + (r->getI()[Y] - r->getI()[Z])*s->ang_vel[Y]*s->ang_vel[Z])/r->getI()[X];
-      s->ang_acc[Y] = (netM[Y] + (r->getI()[Z] - r->getI()[X])*s->ang_vel[X]*s->ang_vel[Z])/r->getI()[Y];
-      s->ang_acc[Z] = (netM[Z] + (r->getI()[X] - r->getI()[Y])*s->ang_vel[Y]*s->ang_vel[X])/r->getI()[Z];
+      //ang_acc[Z] = (moment[Z] + (Ixx - Iyy)*ang_vel[X]*ang_vel[Y])/Izz
+      s->ang_acc[X] = ((netM[X]/r->getI()[X]) + (r->getI()[Y] - r->getI()[Z])*s->ang_vel[Y]*s->ang_vel[Z])/r->getI()[X];
+      s->ang_acc[Y] = ((netM[Y]/r->getI()[Y]) + (r->getI()[Z] - r->getI()[X])*s->ang_vel[X]*s->ang_vel[Z])/r->getI()[Y];
+      s->ang_acc[Z] = ((netM[Z]/r->getI()[Z]) + (r->getI()[X] - r->getI()[Y])*s->ang_vel[Y]*s->ang_vel[X])/r->getI()[Z];
     }
   }
   void Dynamics::updateAngVel(double dt) {

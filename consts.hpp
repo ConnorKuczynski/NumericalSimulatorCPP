@@ -14,7 +14,8 @@ const int Z = 2;
 
 const float MAX_THRUST = 8896; //maintain a constant maximium thrust in positive Z direction
 
-
+//TODO NEXT time : https://sportbm.sitehost.iu.edu/isb2003-tutorial.pdf
+//Use this to calculate the rest of the Ixy, Ixz, etc values and see if that fixes the rotation
 //SIMULATION PARAMETERS
 
 double dt = .00001; // seconds per physics tick, may be changed to a variable time step if needed 10 us
