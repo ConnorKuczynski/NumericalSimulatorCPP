@@ -142,7 +142,7 @@ public:
         void updatePrev(State* curr);
         string to_string(); 
   };
-  int const NUM_FORCES = 3;
+  int const NUM_FORCES = 1; //change this value and array of forces and moments
   Dynamics (Rocket* rocket, Environment* env, Control* control, State* state) {
     r = rocket;
     e = env;

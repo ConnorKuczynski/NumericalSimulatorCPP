@@ -306,18 +306,24 @@ int main(void)
                 // (x,z,y) counter clockwise is positive angle (degrees) 
 
                 //rlTranslatef(0,) //need to center on pivot point (bottom center of rocket)
-                rlRotatef(ang_x,1,0,0);
-                rlRotatef(ang_y,0,0,1);
+                //need to pivot in order of the Euler angles
+                
+                //TODO need to look in how to transform Tait-bryan angles to glRotatef
+                
+                rlRotatef(ang_x,0,0,1);
                 rlRotatef(ang_z,0,1,0);
+                rlRotatef(ang_y,1,0,0);
+                
+                
                 //rlRotatef(90,0,1,0); //
 
                 DrawModel(rocket, cubePosition, .005f, WHITE);
                 rlPopMatrix();
                 
-                DrawLine3D(cubePosition, {vel_x,vel_z,vel_y}, RED);
+                DrawLine3D(cubePosition, {vel_y,vel_z,vel_x}, RED);
                 //cout << "Vel: " + to_string(vel_x) + "  " + to_string(vel_z) + " " + to_string(vel_y) << "\n";
                 DrawLine3D(cubePosition, vectToVect3(vel_proj), BLACK);
-                DrawLine3D(cubePosition, {acc_x,acc_z,acc_y}, BLUE);
+                DrawLine3D(cubePosition, {acc_y,acc_z,acc_x}, BLUE);
                 DrawLine3D(cubePosition, vectToVect3(acc_proj), BLACK);
                 DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
                 DrawGrid(20, 1.0f);
@@ -331,8 +337,8 @@ int main(void)
             DrawText(fuel_ptr, 60, 80, 20, DARKGRAY);
             DrawText(vel_ptr, 60, 120, 20, DARKGRAY);
             DrawText(acc_ptr, 60, 280, 20, DARKGRAY);
-            DrawText("-X", 440, 490, 20, DARKGRAY);
-            DrawText("-Y", 950, 190, 20, DARKGRAY);
+            DrawText("-Y", 440, 490, 20, DARKGRAY);
+            DrawText("-X", 950, 190, 20, DARKGRAY);
 
             DrawFPS(10, 10);
 

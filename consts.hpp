@@ -11,7 +11,6 @@ const int Z = 2;
 
 //In theory we could change this so that we can precisely control the thrust vector at each specified time instant
 
-
 const float MAX_THRUST = 8896; //maintain a constant maximium thrust in positive Z direction
 
 //TODO NEXT time : https://sportbm.sitehost.iu.edu/isb2003-tutorial.pdf

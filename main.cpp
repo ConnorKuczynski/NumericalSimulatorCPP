@@ -6,10 +6,13 @@
 
 using namespace std;
 
-
 //TODO change the normalized vector by log of magnitude
 
 /*
+ * TODO
+ * First either find or make a linear algebra library (to do inverses, matrix multiplication, and vector multplication)
+ * Second use the book the Euler Global to Body Frame angles using its defined reference frame
+ * Third use the book to find the Euler.
  * stores all the physical parameters of the rocket
  * list of param:
  * dry mass, fuel mass, oxidizer mass, length, width, height, (idea is to model each rocket part as a simple shape where we know the moment of inertia
@@ -21,6 +24,17 @@ using namespace std;
  * 
  * Momentum of inertia will be stored relative to the P of the entire rocket
  */
+
+void matrixMult(vector<vector<double>> a, vector<vector<double>> b, vector<vector<double>> c, int c_m, int c_n) {
+  for (int i = 0; i < c_m; i++) {
+    for (int j = 0; j < c_n; j++) {
+      for (int p = 0; p < DIM; p++) {
+        c[i][j] += a[i][p] * b[p][j];
+      }
+   }
+  }
+}
+
 class Environment {
 public:
   const double GM = 3.986004418*pow(10,14); 
@@ -33,8 +47,7 @@ public:
   {
     return air;
   }
-  double getG(double h)
-  {
+  double getG(double h) {
     return GM/pow((R + h),2);
   }
   /*
@@ -193,7 +206,9 @@ void Sphere::updateCOM(float* com, float fuelH, float fuelM, float dry_mass)
 }
 
 //End Sphere
-
+void printVector(double* vec) {
+  cout << "X:" + std::to_string(vec[X]) + " Y:" + std::to_string(vec[Y]) + " Z:" + std::to_string(vec[Z]) << "\n"; 
+}
 //Tank
 /*
 * currently we are assuming that the fuel stays perpendicular to the z axis of the rocket which obviously will need to changed in the future.
@@ -333,8 +348,8 @@ double** Control::initProfile() {
     flight_profile[i] = new double[DIM];
   }
   
-  float x_ang = (PI/180)*20; //radians
-  float y_ang = (PI/180)*0; 
+  float x_ang = (PI/180)*0; //radians
+  float y_ang = (PI/180)*7; 
   float x = sin(x_ang); 
   float y = sin(y_ang);
    
@@ -745,15 +760,14 @@ string Dynamics::to_string()
     
   }
   void Dynamics::updateState(double dt) {
-    double* forces[3] = {fThrust, fDrag, fG}; //fDrag
-    double* moments[3] = {mThrust, mDrag, mG}; //mDrag
+    double* forces[3] = {fThrust,fG,fDrag}; //fDrag
+    double* moments[3] = {mThrust,mG,mDrag}; //mDrag
     
-
+    
     this->updateFdrag();
     this->updateFg();
     this->updateFThrust(s->prev, dt);
-
-
+    
     this->updateNetF(forces);
     this->updateAcc();
 
@@ -778,15 +792,44 @@ string Dynamics::to_string()
     for (int i = 0; i < DIM; i++)
     {
       s->ang_vel[i] += s->ang_acc[i]*dt;
-    // if (s->ang_vel[Y] > (double)0) { cout << std::setprecision(7) << s->ang_vel[Y] << "BAD PRECISION\n"; exit(1);};
     }
-
+    //(p,q,r)
+    // Tait-Bryan angles (X: gamma, Y: theta, Z: alpha)
+    //cout << "Ang Acc "; 
+    //printVector(s->ang_acc);
+    //printVector(s->ang_vel);
+    /*
+    s->ang[Z] += (-sin(s->ang[Z])*s->ang_vel[Y] + cos(s->ang[Y])*cos(s->ang[Z])*s->ang_vel[X])*dt;
+    s->ang[Y] += (cos(s->ang[Z])*s->ang_vel[Y] + cos(s->ang[Y])*sin(s->ang[Z])*s->ang_vel[X])*dt;
+    s->ang[X] += (s->ang_vel[Z] + -sin(s->ang[Y])*s->ang_vel[X])*dt;
+    */
+    /*
     s->ang[X] += (sin(s->ang[Y])*(1/cos(s->ang[Y]))*s->ang_vel[Y] + cos(s->ang[Z])*(1/cos(s->ang[Y]))*s->ang_vel[Z])*dt;
     s->ang[Y] += (cos(s->ang[Z])*s->ang_vel[Y] - sin(s->ang[Z])*s->ang_vel[Z])*dt;
     s->ang[Z] += (s->ang_vel[X] + sin(s->ang[Z])*tan(s->ang[Y])*s->ang_vel[Y] + cos(s->ang[Z])*tan(s->ang[Y])*s->ang_vel[Z])*dt; 
-    //cout << "X: " + std::to_string(s->ang[X]) + " Y: " + std::to_string(s->ang[Y]) + " Z: " + std::to_string(s->ang[Z]) + "\n";
-       
+    */
+   //Book equations
+    s->ang[X] += s->ang_vel[X] + (s->ang_vel[Y]*sin(s->ang[X]) + s->ang_vel[Z]*cos(s->ang[X]))*tan(s->ang[Y]);
+    s->ang[Y] += s->ang_vel[Y]*cos(s->ang[X]) - s->ang[Z]*sin(s->ang[X]);
+    s->ang[Z] += (s->ang_vel[X]*sin(s->ang[X]) + s->ang_acc[Y]*cos(s->ang[X]))/cos(s->ang[Y]);
+
+    cout << "Angle Acc n: \n";
+    printVector(s->ang_acc);
+    cout << "Euler Angler Rate of Change: X:" << (s->ang_vel[Z] + -sin(s->ang[Y])*s->ang_vel[X]);
+    cout << " Y:" << (cos(s->ang[Z])*s->ang_vel[Y] + cos(s->ang[Y])*sin(s->ang[Z])*s->ang_vel[X]);
+    cout << " Z:" << (-sin(s->ang[Z])*s->ang_vel[Y] + cos(s->ang[Y])*cos(s->ang[Z])*s->ang_vel[X]);
+    cout << "\nAngles: ";
+    printVector(s->ang);
+
+    exit(1);
     
+    //cout << "X: " + std::to_string(s->ang[X]) + " Y: " + std::to_string(s->ang[Y]) + " Z: " + std::to_string(s->ang[Z]) + "\n";
+    
+   /*
+    s->ang[Z] += (s->ang_vel[X] + s->ang_vel[Y]*sin(s->ang[Z])*tan(s->ang[X]) + s->ang_vel[Z]*cos(s->ang[Z])*tan(s->ang[X]))*dt;
+    s->ang[X] += (s->ang_vel[Y]*cos(s->ang[Z]) - s->ang_vel[Z]*sin(s->ang[Z]));
+    s->ang[Y] += ((s->ang_vel[X]*sin(s->ang[Z]) + s->ang_vel[Z]*cos(s->ang[Z]))/cos(s->ang[X]));
+    */
     s->mass = this->r->updateMass(dt);
     this->r->updateCOM();
 
@@ -800,12 +843,13 @@ string Dynamics::to_string()
   }
   /*
    * this may get replaced/moved in the future but this succesfully calculates the cross_p, assumes DIM = 3
+   * WARNING: we flipped direction of distance because its measured from pivot to center of mass
    */ 
   void Dynamics::crossProduct(double dist[], double force[], double moment[])
   {
-    moment[0] = dist[1] * force[2] - dist[2] * force[1];
-    moment[1] = dist[2] * force[0] - dist[0] * force[2];
-    moment[2] = dist[0] * force[1] - dist[1] * force[0];
+    moment[0] = -dist[1] * force[2] + dist[2] * force[1];
+    moment[1] = -dist[2] * force[0] + dist[0] * force[2];
+    moment[2] = -dist[0] * force[1] + dist[1] * force[0];
   }
 
   /*
@@ -870,12 +914,12 @@ string Dynamics::to_string()
     for (int i = 0; i < DIM; i++) {
       dist[i] = r->getCOP()[i];
     }
-    
+    /*
     double fDrag_Tot[DIM];
     for (int i = 0; i < DIM; i++) {
       fDrag_Tot[i] = fDrag[i]; //+ fDrag_Ang[i];
     }
-    
+    */
     double fDrag_Roc[DIM];
     globalToRocketFrame(fDrag_Roc, fDrag);
     crossProduct(dist, fDrag_Roc, mDrag);
@@ -898,9 +942,9 @@ string Dynamics::to_string()
   void Dynamics::updateMg()
   {
     //convert from global to rocket frame
-    double a = s->ang[X];
-    double b = s->ang[Y];
-    double y = s->ang[Z];
+    double a = s->ang[Z]; //X
+    double b = s->ang[Y]; //Y
+    double y = s->ang[X]; //Z
 
     double fG_roc[DIM];
 
@@ -953,24 +997,53 @@ string Dynamics::to_string()
     crossProduct(r->getCOM(), netF_roc, inerM);
   }
   void Dynamics::rocketToGlobalFrame(double* roc, double* glo) {
-    double a = s->ang[X];
-    double b = s->ang[Y];
-    double y = s->ang[Z];
+    double a = s->ang[Z]; 
+    double b = s->ang[Y]; 
+    double y = s->ang[X];
 
     //use transpose matrix to go from rocket to global plane
 
+    vector<vector<double>> A = {{1,0,0},{0,cos(y),sin(y)}, {0, -sin(y), cos(y)}};
+    double B[3][3] = {{cos(b),0,-sin(b)},{0,1,0}, {sin(b), 0, cos(b)}};
+    double C[3][3] = {{cos(a),sin(a),0},{-sin(a),cos(a),0}, {0, 0, 1}};
+
+    double T_BI[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
+    matrixMult(A,B,T_BI,3,3);
+    matrixMult(T_BI,C,T_BI,3,3);
+  
+    double[3][1] vect_roc = {{roc[X]},{roc[Y]},{roc[Z]}};
+    matrixMult(T_BI,vect_roc,vect_glo);
+
+    for (int i = 0; i < DIM; i++) {
+      glo[i] = vect_glo[i][0];
+    }
+
+/*
     glo[X] = (cos(a)*cos(b)*roc[X]) + (sin(a)*cos(b))*roc[Y] + (-sin(b))*roc[Z];
     glo[Y] = (cos(a)*sin(b)*sin(y)-sin(a)*cos(y))*roc[X] + (sin(a)*sin(b)*sin(y)+cos(a)*cos(y))*roc[Y] + (cos(b)*sin(y))*roc[Z];
     glo[Z] = (cos(a)*sin(b)*cos(y)+sin(a)*sin(y))*roc[X] + (sin(a)*sin(b)*cos(y)-cos(a)*sin(y))*roc[Y] + (cos(b)*cos(y))*roc[Z];
+    */
   }
   void Dynamics::globalToRocketFrame(double* roc, double* glo) {
-    double a = s->ang[X];
-    double b = s->ang[Y];
-    double y = s->ang[Z];
-    
-    roc[X] = cos(a)*cos(b)*glo[X] + (cos(a)*sin(b)*sin(y) - sin(a)*cos(y))*glo[Y] + (cos(a)*sin(b)*cos(y) + sin(a)*sin(y))*glo[Z];
-    roc[Y] = sin(a)*cos(b)*glo[X] + (sin(a)*sin(b)*sin(y) + cos(a)*cos(y))*glo[Y] + (sin(a)*sin(b)*cos(y) - cos(a)*sin(y))*glo[Z];
-    roc[Z] = -sin(b)*glo[X] + cos(b)*sin(y)*glo[Y] + cos(b)*cos(y)*glo[Z]; 
+    double a = s->ang[Z]; 
+    double b = s->ang[Y]; 
+    double y = s->ang[X];
+
+    //use transpose matrix to go from rocket to global plane
+    Eigen::Matrix A = {{1,0,0},{0,cos(y),sin(y)}, {0, -sin(y), cos(y)}};
+    Eigen::Matrix B = {{cos(b),0,-sin(b)},{0,1,0}, {sin(b), 0, cos(b)}};
+    Eigen::Matrix C = {{cos(a),sin(a),0},{-sin(a),cos(a),0}, {0, 0, 1}};
+
+    Eigen::Matrix T_BI = A * B * C;
+    Eigen::Matrix T_IB = T_BI.transpose();
+    Eigen::Matrix vect_glo = {roc[X],roc[Y],roc[Z]};
+    vect_glo = vect_glo.transpose();
+    Eigen::Matrix vect_roc = T_IB*vect_glo;
+
+    for (int i = 0; i < DIM; i++) {
+      roc[i] = vect_roc[i];
+    }
+
   }
   void Dynamics::updateNetF(double** forces)
   {
@@ -1051,9 +1124,20 @@ string Dynamics::to_string()
       //ang_acc[X] = (moment[X] + (Iyy - Izz)*ang_vel[Y]*ang_vel[Z])/Ixx
       //ang_acc[Y] = (moment[Y] + (Izz - Ixx)*ang_vel[X]*ang_vel[Z])/Iyy
       //ang_acc[Z] = (moment[Z] + (Ixx - Iyy)*ang_vel[X]*ang_vel[Y])/Izz
-      s->ang_acc[X] = ((netM[X]/r->getI()[X]) + (r->getI()[Y] - r->getI()[Z])*s->ang_vel[Y]*s->ang_vel[Z])/r->getI()[X];
-      s->ang_acc[Y] = ((netM[Y]/r->getI()[Y]) + (r->getI()[Z] - r->getI()[X])*s->ang_vel[X]*s->ang_vel[Z])/r->getI()[Y];
-      s->ang_acc[Z] = ((netM[Z]/r->getI()[Z]) + (r->getI()[X] - r->getI()[Y])*s->ang_vel[Y]*s->ang_vel[X])/r->getI()[Z];
+      
+
+      s->ang_acc[X] = (netM[X] + (r->getI()[Y] - r->getI()[Z])*s->ang_vel[Y]*s->ang_vel[Z])/r->getI()[X];
+      s->ang_acc[Y] = (netM[Y] + (r->getI()[Z] - r->getI()[X])*s->ang_vel[X]*s->ang_vel[Z])/r->getI()[Y];
+      s->ang_acc[Z] = (netM[Z] + (r->getI()[X] - r->getI()[Y])*s->ang_vel[Y]*s->ang_vel[X])/r->getI()[Z];
+      /*printVector(s->ang_acc);
+      if (netM[Y] > (double)0) 
+      { 
+        cout << std::setprecision(7) << netM[X] << "\n"; 
+        cout << std::setprecision(7) << netM[Y] << "\n";  
+        cout << std::setprecision(7) << netM[Z] << "\n";
+        exit(1);
+      }
+      */
     }
   }
   void Dynamics::updateAngVel(double dt) {
