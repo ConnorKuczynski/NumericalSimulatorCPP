@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <cmath>
 #include "main.hpp"
+#include <Eigen>
 
 using namespace std;
 
@@ -812,7 +813,7 @@ string Dynamics::to_string()
     s->ang[X] += s->ang_vel[X] + (s->ang_vel[Y]*sin(s->ang[X]) + s->ang_vel[Z]*cos(s->ang[X]))*tan(s->ang[Y]);
     s->ang[Y] += s->ang_vel[Y]*cos(s->ang[X]) - s->ang[Z]*sin(s->ang[X]);
     s->ang[Z] += (s->ang_vel[X]*sin(s->ang[X]) + s->ang_acc[Y]*cos(s->ang[X]))/cos(s->ang[Y]);
-
+    /*
     cout << "Angle Acc n: \n";
     printVector(s->ang_acc);
     cout << "Euler Angler Rate of Change: X:" << (s->ang_vel[Z] + -sin(s->ang[Y])*s->ang_vel[X]);
@@ -820,8 +821,8 @@ string Dynamics::to_string()
     cout << " Z:" << (-sin(s->ang[Z])*s->ang_vel[Y] + cos(s->ang[Y])*cos(s->ang[Z])*s->ang_vel[X]);
     cout << "\nAngles: ";
     printVector(s->ang);
-
-    exit(1);
+    */
+    //exit(1);
     
     //cout << "X: " + std::to_string(s->ang[X]) + " Y: " + std::to_string(s->ang[Y]) + " Z: " + std::to_string(s->ang[Z]) + "\n";
     
@@ -1002,22 +1003,24 @@ string Dynamics::to_string()
     double y = s->ang[X];
 
     //use transpose matrix to go from rocket to global plane
-
-    vector<vector<double>> A = {{1,0,0},{0,cos(y),sin(y)}, {0, -sin(y), cos(y)}};
-    double B[3][3] = {{cos(b),0,-sin(b)},{0,1,0}, {sin(b), 0, cos(b)}};
-    double C[3][3] = {{cos(a),sin(a),0},{-sin(a),cos(a),0}, {0, 0, 1}};
-
-    double T_BI[3][3] = {{0,0,0},{0,0,0},{0,0,0}};
-    matrixMult(A,B,T_BI,3,3);
-    matrixMult(T_BI,C,T_BI,3,3);
   
-    double[3][1] vect_roc = {{roc[X]},{roc[Y]},{roc[Z]}};
-    matrixMult(T_BI,vect_roc,vect_glo);
+    Eigen::Matrix3d A;
+    A << 1,0,0,0,cos(y),sin(y), 0, -sin(y), cos(y);
+    Eigen::Matrix3d B;
+    B << cos(b),0,-sin(b),0,1,0, sin(b), 0, cos(b);
+    Eigen::Matrix3d C;
+    C << cos(a),sin(a),0,-sin(a),cos(a),0, 0, 0, 1;
+  
+    Eigen::Matrix3d T_BI = A * B * C;
+    Eigen::Vector3d vect_glo;
+    vect_glo << roc[X],roc[Y],roc[Z];
+  
+    Eigen::Vector3d vect_roc = T_BI*vect_glo;
 
     for (int i = 0; i < DIM; i++) {
-      glo[i] = vect_glo[i][0];
+      roc[i] = vect_roc[i];
     }
-
+  
 /*
     glo[X] = (cos(a)*cos(b)*roc[X]) + (sin(a)*cos(b))*roc[Y] + (-sin(b))*roc[Z];
     glo[Y] = (cos(a)*sin(b)*sin(y)-sin(a)*cos(y))*roc[X] + (sin(a)*sin(b)*sin(y)+cos(a)*cos(y))*roc[Y] + (cos(b)*sin(y))*roc[Z];
@@ -1025,25 +1028,30 @@ string Dynamics::to_string()
     */
   }
   void Dynamics::globalToRocketFrame(double* roc, double* glo) {
+    
     double a = s->ang[Z]; 
     double b = s->ang[Y]; 
     double y = s->ang[X];
 
     //use transpose matrix to go from rocket to global plane
-    Eigen::Matrix A = {{1,0,0},{0,cos(y),sin(y)}, {0, -sin(y), cos(y)}};
-    Eigen::Matrix B = {{cos(b),0,-sin(b)},{0,1,0}, {sin(b), 0, cos(b)}};
-    Eigen::Matrix C = {{cos(a),sin(a),0},{-sin(a),cos(a),0}, {0, 0, 1}};
+    Eigen::Matrix3d A;
+    A << 1,0,0,0,cos(y),sin(y), 0, -sin(y), cos(y);
+    Eigen::Matrix3d B;
+    B << cos(b),0,-sin(b),0,1,0, sin(b), 0, cos(b);
+    Eigen::Matrix3d C;
+    C << cos(a),sin(a),0,-sin(a),cos(a),0, 0, 0, 1;
 
-    Eigen::Matrix T_BI = A * B * C;
-    Eigen::Matrix T_IB = T_BI.transpose();
-    Eigen::Matrix vect_glo = {roc[X],roc[Y],roc[Z]};
-    vect_glo = vect_glo.transpose();
-    Eigen::Matrix vect_roc = T_IB*vect_glo;
+
+    Eigen::Matrix3d T_BI = A * B * C;
+    Eigen::Matrix3d T_IB = T_BI.transpose();
+    Eigen::Vector3d vect_glo;
+    vect_glo << roc[X],roc[Y],roc[Z];
+    Eigen::Vector3d vect_roc = T_IB*vect_glo;
 
     for (int i = 0; i < DIM; i++) {
       roc[i] = vect_roc[i];
     }
-
+    
   }
   void Dynamics::updateNetF(double** forces)
   {

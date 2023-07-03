@@ -2,8 +2,8 @@
 while getopts ":srb" opt; do
   case "${opt}" in
     s)
-      g++ main.cpp -o main.exe
-      ./main.exe
+      g++ -I Eigen main.cpp -o main.exe
+      ./main.exe || exit
       ;;
     r)
       cd 3DRendering || exit
@@ -12,7 +12,7 @@ while getopts ":srb" opt; do
       cd ../3DRendering || exit
       ;;  
     b)
-      g++ main.cpp -O2 -llapack -lblas -o -I "C:\Users\Connor\source\repos\ckuzyns\NumericalSimulatorCPP\include\eigen-3.4.0\eigen3" main.exe
+      g++ -I Eigen main.cpp -o main.exe
       ./main.exe || exit
       cd 3DRendering || exit
       make
